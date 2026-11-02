@@ -286,6 +286,18 @@ def cmd_open(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_menubar(args: argparse.Namespace) -> int:
+    from .menubar import run
+
+    if args.demo:
+        from .demo import build_demo
+
+        run(build_demo())
+    else:
+        run(db_path())
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     from .demo import build_demo
 
@@ -295,10 +307,12 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_install(args: argparse.Namespace) -> int:  # noqa: ARG001
+def cmd_install(args: argparse.Namespace) -> int:
     from . import autostart
 
-    print(autostart.install())
+    print(autostart.install(menubar=not args.no_menubar))
+    if not args.no_menubar and not autostart.menubar_available():
+        print(dim("For a menu-bar / tray icon, install the extra packages:  pip install 'freezeframe[menubar]'  and run this again."))
     print("Open the dashboard any time with  freezeframe open  or ask  freezeframe why  after a freeze.")
     return 0
 
@@ -358,6 +372,10 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--demo", action="store_true", help="explore a demo recording instead of yours")
     o.set_defaults(func=cmd_open)
 
+    mb = sub.add_parser("menubar", help="show the menu-bar (or tray) icon")
+    mb.add_argument("--demo", action="store_true", help=argparse.SUPPRESS)
+    mb.set_defaults(func=cmd_menubar)
+
     st = sub.add_parser("status", help="is the recorder running, and how much does it store?")
     st.set_defaults(func=cmd_status)
 
@@ -365,7 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--path", default=None)
     d.set_defaults(func=cmd_demo)
 
-    sub.add_parser("install", help="record in the background, starting at login").set_defaults(func=cmd_install)
+    ins = sub.add_parser("install", help="record in the background (and show the menu-bar icon), starting at login")
+    ins.add_argument("--no-menubar", action="store_true", help="don't add the menu-bar / tray icon")
+    ins.set_defaults(func=cmd_install)
     sub.add_parser("uninstall", help="stop recording in the background").set_defaults(func=cmd_uninstall)
     f = sub.add_parser("forget", help="delete the recording")
     f.add_argument("--yes", action="store_true")

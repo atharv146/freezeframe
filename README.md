@@ -53,7 +53,9 @@ Above that, **Worth knowing** pulls out what matters from the last day: a disk t
 
 ![The Right now view: readouts for CPU, memory, disk, battery and uptime, memory and CPU by app, a list of things worth knowing, and plain-English descriptions of each running app](docs/right-now.png)
 
-When it catches a freeze of three seconds or more, it shows a desktop notification with the cause, so you don't even have to go looking.
+## Lives in your menu bar
+
+After installing, a Freezeframe icon sits in the macOS menu bar (or the Windows system tray), so you never need a terminal. Click it to see live CPU and memory, the apps using the most memory, the latest incident with its cause, and anything that needs your attention. From there you can open the dashboard or press **Something went wrong…** the moment you notice a problem. A small badge appears on the icon after a freeze or when memory runs critically low, and freezes of three seconds or more also pop up as a desktop notification with the cause.
 
 ## What it catches
 
@@ -86,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/atharv146/freezeframe/main/install.
 irm https://raw.githubusercontent.com/atharv146/freezeframe/main/install.ps1 | iex
 ```
 
-The installer needs Python 3.10 or newer, and no administrator rights. It installs Freezeframe into its own folder, adds the `freezeframe` command, and starts recording in the background whenever you log in. Read the scripts first if you like: [install.sh](install.sh), [install.ps1](install.ps1). If you already use pipx:
+The installer needs Python 3.10 or newer, and no administrator rights. It installs Freezeframe into its own folder, adds the `freezeframe` command, starts recording in the background, and puts the Freezeframe icon in your menu bar or tray; both start again whenever you log in. Read the scripts first if you like: [install.sh](install.sh), [install.ps1](install.ps1). If you already use pipx:
 
 ```bash
 pipx install git+https://github.com/atharv146/freezeframe && freezeframe install
@@ -110,6 +112,7 @@ To remove it: `freezeframe uninstall` stops the background recording and `freeze
 | `freezeframe mark "zoom froze"` | Notes that something just went wrong and explains the moments before it |
 | `freezeframe list` / `show <n>` | Lists incidents / explains one |
 | `freezeframe open` | Opens the timeline dashboard in your browser |
+| `freezeframe menubar` | Shows the menu-bar / tray icon (`install` starts it at login) |
 | `freezeframe status` | Is it recording, how far back, and how much space it uses |
 | `freezeframe uninstall` / `forget --yes` | Stops background recording / deletes the recording |
 
@@ -148,6 +151,7 @@ Everything stays on your computer. Nothing is uploaded. The dashboard listens on
 | App hangs and crashes | DiagnosticReports | Event Log | – |
 | Kernel panics and hardware errors | panic reports | blue screens, WHEA, GPU resets, disk errors | machine checks, GPU hangs, I/O errors |
 | Starts at login | launchd agent | Task Scheduler | systemd user service |
+| Menu-bar / tray icon | ✓ | ✓ | desktops with tray support (`pip install 'freezeframe[menubar]'`) |
 
 ## Development
 

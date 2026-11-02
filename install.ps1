@@ -42,12 +42,13 @@ if ($LASTEXITCODE -ne 0) { Fail "couldn't create a Python environment in $AppDir
 
 $vpy = Join-Path $AppDir 'Scripts\python.exe'
 & $vpy -m pip install --quiet --disable-pip-version-check --upgrade pip
+# Includes the tray icon (pystray + Pillow).
 if ($env:FREEZEFRAME_SOURCE) {
-    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade $env:FREEZEFRAME_SOURCE
+    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "$($env:FREEZEFRAME_SOURCE)[menubar]"
 } else {
-    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade freezeframe 2>$null
+    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade 'freezeframe[menubar]' 2>$null
     if ($LASTEXITCODE -ne 0) {
-        & $vpy -m pip install --quiet --disable-pip-version-check --upgrade $GithubZip
+        & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe[menubar] @ $GithubZip"
     }
 }
 if ($LASTEXITCODE -ne 0) { Fail 'pip could not install Freezeframe' }
@@ -68,6 +69,7 @@ if ($env:FREEZEFRAME_NO_AUTOSTART -ne '1') {
 
 Write-Host ''
 Write-Host "$(& $ff --version) is installed."
+Write-Host "  freezeframe now     what's running right now, explained"
 Write-Host '  freezeframe why     explain the latest freeze'
 Write-Host '  freezeframe open    open the timeline dashboard'
 Write-Host '  freezeframe open --demo    explore a demo recording right now'

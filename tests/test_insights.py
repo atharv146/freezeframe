@@ -94,3 +94,35 @@ def test_cli_now(demo_db, capsys):
 def test_notifications_can_be_turned_off(monkeypatch):
     monkeypatch.setenv("FREEZEFRAME_NO_NOTIFY", "1")
     assert notify.notify("t", "b") is False
+
+
+def test_tray_state_for_demo(demo_store):
+    from freezeframe.tray import tray_state
+
+    st = tray_state(demo_store, DEMO_MACHINE, now=demo_store.bounds()[1])
+    assert st.recording and st.lines[0].startswith("CPU ")
+    assert any("Brave Browser" in line for line in st.lines)
+    assert st.latest is not None and st.latest.title[:20] in st.latest_text
+    assert st.attention  # the demo's last freeze is minutes old
+    assert st.tip and "disk" in st.tip
+
+
+def test_tray_state_without_recording(tmp_path):
+    from freezeframe.tray import tray_state
+
+    st = tray_state(Store(tmp_path / "e.db"), {})
+    assert not st.recording and "not recording" in st.tooltip.lower()
+
+
+def test_icon_images():
+    import pytest
+
+    pytest.importorskip("PIL")
+    from freezeframe.menubar import icon_image
+
+    plain = icon_image(False, template=True)
+    badge = icon_image(True, template=True)
+    tile = icon_image(True, template=False)
+    assert plain.size == (64, 64) and plain.mode == "RGBA"
+    assert plain.getpixel((60, 4))[3] == 0 and badge.getpixel((58, 8))[3] == 255  # badge only when needed
+    assert tile.getpixel((32, 32))[:3] != (0, 0, 0)

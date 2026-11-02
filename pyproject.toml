@@ -25,7 +25,8 @@ classifiers = [
 dependencies = ["psutil>=5.9"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+menubar = ["pystray>=0.19", "Pillow>=10"]
+dev = ["pytest>=8", "Pillow>=10"]
 
 [project.urls]
 Homepage = "https://github.com/atharv146/freezeframe"

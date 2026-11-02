@@ -41,10 +41,13 @@ mkdir -p "$(dirname "$APP_DIR")"
 "$PY" -m venv "$APP_DIR" 2>/dev/null || fail "couldn't create a Python environment. On Debian or Ubuntu, run: sudo apt install python3-venv"
 VPY="$APP_DIR/bin/python"
 "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade pip
+# The menu-bar icon (pystray + Pillow) is included on macOS; Linux tray support varies by desktop.
+EXTRA=""
+[ "$(uname -s)" = Darwin ] && EXTRA="[menubar]"
 if [ -n "${FREEZEFRAME_SOURCE:-}" ]; then
-  "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "$FREEZEFRAME_SOURCE"
-elif ! "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade freezeframe 2>/dev/null; then
-  "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "$GITHUB_ZIP"
+  "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "$FREEZEFRAME_SOURCE$EXTRA"
+elif ! "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe$EXTRA" 2>/dev/null; then
+  "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe$EXTRA @ $GITHUB_ZIP"
 fi
 
 mkdir -p "$BIN_DIR"
@@ -71,6 +74,7 @@ fi
 
 say ""
 say "Freezeframe $("$BIN_DIR/freezeframe" --version | cut -d' ' -f2) is installed."
+say "  freezeframe now     what's running right now, explained"
 say "  freezeframe why     explain the latest freeze"
 say "  freezeframe open    open the timeline dashboard"
 say "  freezeframe open --demo    explore a demo recording right now"

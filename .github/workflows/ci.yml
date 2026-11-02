@@ -45,6 +45,7 @@ jobs:
           FREEZEFRAME_SOURCE="$PWD" sh install.sh
           ~/.local/bin/freezeframe --version
           ~/.local/bin/freezeframe demo
+          if [ "$RUNNER_OS" = macOS ]; then "$HOME/Library/Application Support/Freezeframe/app/bin/python" -c "import pystray, PIL, freezeframe.menubar; print('menu-bar icon ready')"; fi
       - name: install.ps1
         if: runner.os == 'Windows'
         shell: pwsh
@@ -53,3 +54,4 @@ jobs:
           ./install.ps1
           & "$env:LOCALAPPDATA\Freezeframe\app\Scripts\freezeframe.exe" --version
           & "$env:LOCALAPPDATA\Freezeframe\app\Scripts\freezeframe.exe" demo
+          & "$env:LOCALAPPDATA\Freezeframe\app\Scripts\python.exe" -c "import pystray, PIL, freezeframe.menubar; print('tray icon ready')"
