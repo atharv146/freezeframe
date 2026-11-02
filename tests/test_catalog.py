@@ -33,6 +33,7 @@ def test_summaries_from_app_details():
     assert "Part of macOS" in summary("opendirectoryd", _loose_binary("/usr/libexec/opendirectoryd"), "darwin")
     assert "Electron" in summary("Thing", {"bundle_id": "x", "electron": True})
     assert summary("x", {}) is None
+    assert summary("Unsigned", {"bundle_id": "com.example.unsigned"}) is None
 
 
 def test_kinds():

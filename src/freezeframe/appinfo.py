@@ -268,6 +268,8 @@ def summary(app: str, info: dict[str, Any], platform: str = sys.platform) -> str
         parts.append("It runs in the background with no window.")
     if info.get("electron"):
         parts.append("It's built with Electron (a web page in an app wrapper), so it uses more memory than a typical app.")
+    if parts == ["An app."]:
+        return None  # nothing beyond "it's an app" is known
     return " ".join(parts) if parts else None
 
 
