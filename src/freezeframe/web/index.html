@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Freezeframe</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">
+        <svg class="glyph" viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="4" width="24" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 17h4l2-6 3 10 2-14 2 10h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        <span class="name">Freezeframe</span>
+      </div>
+      <p class="status" id="status" role="status"></p>
+      <button type="button" class="primary" id="mark-open">Something went wrong</button>
+    </header>
+
+    <form class="mark" id="mark-form" hidden>
+      <label for="mark-note">What happened? <span class="optional">Optional</span></label>
+      <input id="mark-note" maxlength="200" placeholder="For example: Zoom froze while screen sharing" autocomplete="off" />
+      <label for="mark-when">When</label>
+      <select id="mark-when">
+        <option value="0">Just now</option>
+        <option value="1">About a minute ago</option>
+        <option value="5">About 5 minutes ago</option>
+        <option value="15">About 15 minutes ago</option>
+        <option value="60">About an hour ago</option>
+      </select>
+      <button type="submit" class="primary">Explain it</button>
+      <button type="button" class="quiet" id="mark-cancel">Cancel</button>
+    </form>
+
+    <main class="layout">
+      <aside class="incidents" aria-labelledby="incidents-title">
+        <h2 id="incidents-title">Incidents</h2>
+        <p class="hint">Freezes Freezeframe caught, hangs and crashes your computer reported, and problems you flagged.</p>
+        <ol id="incident-list"></ol>
+      </aside>
+
+      <section class="view" aria-label="Timeline">
+        <div class="toolbar">
+          <div class="ranges" role="group" aria-label="Time range" id="ranges">
+            <button type="button" data-range="900">15 min</button>
+            <button type="button" data-range="3600">1 hour</button>
+            <button type="button" data-range="21600">6 hours</button>
+            <button type="button" data-range="86400">24 hours</button>
+            <button type="button" data-range="all">Everything</button>
+          </div>
+          <div class="pan" role="group" aria-label="Move in time">
+            <button type="button" id="pan-back" aria-label="Earlier">Earlier</button>
+            <button type="button" id="pan-fwd" aria-label="Later">Later</button>
+          </div>
+          <p class="range-label" id="range-label"></p>
+        </div>
+
+        <div class="lanes" id="lanes">
+          <div class="lane" data-lane="events"><div class="lane-label">Events</div><canvas></canvas></div>
+          <div class="lane" data-lane="cpu"><div class="lane-label">CPU<span>share of the whole processor</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="mem"><div class="lane-label">Memory<span>in use, by app</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="swap"><div class="lane-label">Swapping<span>memory moved to disk</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="disk"><div class="lane-label">Disk<span>reads and writes</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="freeze"><div class="lane-label">Freezes and heat</div><canvas></canvas></div>
+          <div class="crosshair" id="crosshair" hidden></div>
+          <div class="selection" id="drag" hidden></div>
+        </div>
+        <div class="legend" id="legend" aria-label="Legend"></div>
+        <p class="chart-hint">Click any moment to see what was going on. Drag across the chart to zoom in.</p>
+
+        <article class="explain" id="explain" aria-live="polite"></article>
+      </section>
+    </main>
+    <div class="tip" id="tip" role="tooltip" hidden></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
