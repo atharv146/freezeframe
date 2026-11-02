@@ -124,7 +124,7 @@ class Recorder:
             self._pending.append((incident.id, incident, end + 10))
 
     def _diagnose(self, incident: Event) -> None:
-        d = diagnose(self.store, incident.ts, incident.end_ts, incident)
+        d = diagnose(self.store, incident.ts, incident.end_ts, incident, sys.platform)
         self.store.update_event(incident.id, title=incident_title(incident, d), detail={**incident.detail, "diagnosis": d})
 
     def _rediagnose(self, now: float) -> None:
@@ -148,7 +148,7 @@ def mark(store: Store, note: str = "", minutes_ago: float = 0.0) -> Event:
     ts = time.time() - minutes_ago * 60
     e = Event(ts, "mark", "You reported a problem", 2, end_ts=ts, detail={"note": note} if note else {})
     e.id = store.add_event(e)
-    d = diagnose(store, ts, ts, e)
+    d = diagnose(store, ts, ts, e, store.platform(sys.platform))
     store.update_event(e.id, title=incident_title(e, d), detail={**e.detail, "diagnosis": d})
     e.title = incident_title(e, d)
     e.detail = {**e.detail, "diagnosis": d}

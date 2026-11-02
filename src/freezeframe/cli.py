@@ -144,18 +144,18 @@ def cmd_why(args: argparse.Namespace) -> int:
         return 1
     if args.at:
         t = parse_moment(args.at)
-        d = diagnose(store, t, t)
+        d = diagnose(store, t, t, None, store.platform(sys.platform))
         print_diagnosis(d, f"What happened around {when(t)}: {d['short']}")
         return 0
     recent = [e for e in store.incidents(5) if time.time() - (e.end_ts or e.ts) < args.within * 60]
     if recent:
         e = recent[0]
-        d = (e.detail or {}).get("diagnosis") or diagnose(store, e.ts, e.end_ts, e)
-        d = diagnose(store, e.ts, e.end_ts, e) if not args.cached else d
+        d = (e.detail or {}).get("diagnosis") if args.cached else None
+        d = d or diagnose(store, e.ts, e.end_ts, e, store.platform(sys.platform))
         print_diagnosis(d, e.title)
         return 0
     now = time.time()
-    d = diagnose(store, now, now)
+    d = diagnose(store, now, now, None, store.platform(sys.platform))
     print_diagnosis(d, f"The last 2 minutes: {d['short']}")
     if d["findings"][0]["cause"] in ("none", "quiet"):
         print(dim("  No freeze was detected recently. To look at an earlier moment:  freezeframe why --at 3:42pm\n"))
@@ -185,7 +185,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     if e is None:
         print(f"No incident #{args.id}.")
         return 1
-    d = diagnose(store, e.ts, e.end_ts, e)
+    d = diagnose(store, e.ts, e.end_ts, e, store.platform(sys.platform))
     print_diagnosis(d, e.title)
     return 0
 

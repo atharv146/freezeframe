@@ -79,7 +79,7 @@ class Api:
     def diagnose(self, q: dict[str, str]) -> dict[str, Any]:
         s = self._store()
         try:
-            platform = self.platform or (s.meta().get("platform")) or (s.meta().get("recorder") or {}).get("platform") or sys.platform
+            platform = self.platform or s.platform(sys.platform)
             if "id" in q:
                 e = s.event(int(q["id"]))
                 if e is None:

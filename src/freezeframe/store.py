@@ -120,6 +120,11 @@ class Store:
     def meta(self) -> dict[str, Any]:
         return {r["key"]: json.loads(r["value"]) for r in self.db.execute("SELECT key, value FROM meta")}
 
+    def platform(self, default: str) -> str:
+        """The OS the recording was made on (it can be opened elsewhere)."""
+        meta = self.meta()
+        return meta.get("platform") or (meta.get("recorder") or {}).get("platform") or default
+
     def bounds(self) -> tuple[float | None, float | None]:
         r = self.db.execute("SELECT min(ts), max(ts) FROM samples").fetchone()
         return r[0], r[1]

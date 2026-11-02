@@ -89,3 +89,13 @@ def test_parse_moment():
     assert abs(cli.parse_moment("10m") - (time.time() - 600)) < 2
     assert abs(cli.parse_moment("90 sec ago") - (time.time() - 90)) < 2
     assert cli.parse_moment("3:42pm") <= time.time()
+
+
+def test_cli_uses_the_platform_the_recording_was_made_on(demo_db, capsys, monkeypatch):
+    shutil.copy(demo_db, db_path())
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    cli.main(["list"])
+    incident_id = int(capsys.readouterr().out.split("Froze for 9 s")[1].split("#")[1].split()[0])
+    cli.main(["show", str(incident_id)])
+    out = capsys.readouterr().out
+    assert "Your Mac ran out of memory" in out and "Your PC" not in out
