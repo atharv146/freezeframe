@@ -42,8 +42,9 @@ mkdir -p "$(dirname "$APP_DIR")"
 VPY="$APP_DIR/bin/python"
 "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade pip
 # The menu-bar icon (pystray + Pillow) is included on macOS; Linux tray support varies by desktop.
-EXTRA=""
-[ "$(uname -s)" = Darwin ] && EXTRA="[menubar]"
+# "ai" only installs the Anthropic package; nothing is sent anywhere unless you add your own API key.
+EXTRA="[ai]"
+[ "$(uname -s)" = Darwin ] && EXTRA="[menubar,ai]"
 if [ -n "${FREEZEFRAME_SOURCE:-}" ]; then
   "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "$FREEZEFRAME_SOURCE$EXTRA"
 elif ! "$VPY" -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe$EXTRA" 2>/dev/null; then

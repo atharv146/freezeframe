@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "freezeframe"
-version = "0.1.0"
+version = "0.2.0"
 description = "A flight recorder for your computer: it keeps the last few days of what every app was doing, notices freezes on its own, and explains them in plain English."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,6 +26,7 @@ dependencies = ["psutil>=5.9"]
 
 [project.optional-dependencies]
 menubar = ["pystray>=0.19", "Pillow>=10"]
+ai = ["anthropic>=2.3"]
 dev = ["pytest>=8", "Pillow>=10"]
 
 [project.urls]

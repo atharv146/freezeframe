@@ -19,8 +19,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .catalog import Catalog
 from .diagnose import diagnose
 from .models import INCIDENT_KINDS, Event
+from .storage import StorageScan
 from .store import Store
 
 STATIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/favicon.svg": "favicon.svg"}
@@ -44,6 +46,15 @@ class Api:
         self.db = db
         self.platform = platform
         self._machine: tuple[float, dict[str, Any]] | None = None
+        self._catalog: Catalog | None = None
+        self._hardware: tuple[float, dict[str, Any]] | None = None
+        self.storage = StorageScan()
+
+    def catalog(self, s: Store) -> Catalog:
+        if self._catalog is None:
+            # Demo recordings describe made-up apps: don't look them up on this computer.
+            self._catalog = Catalog(self.platform or s.platform(sys.platform), use_details=not s.meta().get("demo"))
+        return self._catalog
 
     def machine(self, s: Store) -> dict[str, Any]:
         """This computer's facts, or the recording's own for demo recordings."""
@@ -62,7 +73,9 @@ class Api:
         s = self._store()
         try:
             info = self.machine(s)
-            return {**snapshot(s, info), "insights": [asdict(i) for i in insights(s, info)]}
+            catalog = self.catalog(s)
+            snap = snapshot(s, info, catalog, None if s.meta().get("demo") else self.db)
+            return {**snap, "insights": [asdict(i) for i in insights(s, info, snap=snap)], "ai": catalog.ai_status()}
         finally:
             s.close()
 
@@ -90,13 +103,102 @@ class Api:
         try:
             step = max(1.0, (end - start) / max(50, min(points, 2000)))
             series = s.series(start, end, step)
+            counts = {p["t"]: p["n"] for p in series}
             apps = s.top_apps(start, end, 12)
             names = [a["app"] for a in apps]  # the dashboard picks which of these get a colour
-            per_app = s.app_series(start, end, step, names)
+            per_app = s.app_series(start, end, step, names, counts)
+            ncores = (s.meta().get("recorder") or {}).get("cpus") or 8
+            # Every recorded app, sorted into "your apps" and "background and system", per bucket.
+            rows = s.bucket_apps(start, end, step)
+            top_names = {r["app"]: r["top_name"] for r in rows}
+            described = self.catalog(s).describe(s, list(top_names.items()))
+            kinds = {a: d["kind"] for a, d in described.items()}
+            by_t: dict[float, dict[str, Any]] = {}
+            for r in rows:
+                b = by_t.setdefault(r["t"], {"t": r["t"], "apps": 0.0, "background": 0.0, "top": None, "top_cpu": 0.0})
+                cpu = r["cpu_sum"] / max(1, counts.get(r["t"], 1))
+                b["apps" if kinds.get(r["app"]) == "app" else "background"] += cpu / ncores
+                if cpu > b["top_cpu"]:
+                    b["top"], b["top_cpu"] = r["app"], cpu
+            kind_series = [{**b, "top_cpu": b["top_cpu"] / ncores} for _, b in sorted(by_t.items())]
             events = [_event_json(e) for e in s.events(start, end)]
-            return {"start": start, "end": end, "step": step, "series": series, "apps": apps, "app_series": per_app, "events": events}
+            return {"start": start, "end": end, "step": step, "series": series, "apps": apps, "app_series": per_app,
+                    "kinds": kinds, "kind_series": kind_series, "cpus": ncores, "events": events}
         finally:
             s.close()
+
+    def strip(self, points: int = 360) -> dict[str, Any]:
+        """The whole recording, coarsely: for the overview strip above the timeline."""
+        s = self._store()
+        try:
+            first, last = s.bounds()
+            if first is None:
+                return {"first": None, "last": None, "series": []}
+            step = max(10.0, (last - first) / max(50, min(points, 1000)))
+            series = [{"t": p["t"], "cpu": p["cpu_max"], "mem": 1 - p["mem_available"] / p["mem_total"] if p["mem_total"] else 0,
+                       "pressure": p["pressure"]} for p in s.series(first, last, step)]
+            return {"first": first, "last": last, "step": step, "series": series}
+        finally:
+            s.close()
+
+    def what(self, q: dict[str, str]) -> dict[str, Any]:
+        from .what import what_happened
+        from .when import NotUnderstood, Window, parse
+
+        s = self._store()
+        try:
+            platform = self.platform or s.platform(sys.platform)
+            if "start" in q:
+                window = Window(float(q["start"]), float(q["end"]), q.get("label") or "in this stretch")
+            else:
+                try:
+                    window = parse(q.get("q", ""))
+                except NotUnderstood:
+                    raise ValueError("Freezeframe didn't understand that time. Try something like 3:40pm, 20 minutes ago, or yesterday evening.") from None
+            return what_happened(s, window, platform)
+        finally:
+            s.close()
+
+    def hardware(self) -> dict[str, Any]:
+        s = self._store()
+        try:
+            meta = s.meta()
+        finally:
+            s.close()
+        if meta.get("demo") and meta.get("hardware"):
+            return meta["hardware"]
+        from .hardware import hardware
+
+        if self._hardware is None or time.time() - self._hardware[0] > 600:
+            self._hardware = (time.time(), hardware())
+        return self._hardware[1]
+
+    def storage_status(self, start: bool = False, private: bool = False) -> dict[str, Any]:
+        s = self._store()
+        try:
+            meta = s.meta()
+        finally:
+            s.close()
+        if meta.get("demo") and meta.get("storage"):
+            return meta["storage"]
+        if start:
+            self.storage.start(private)
+        return self.storage.status()
+
+    def set_ai_key(self, body: dict[str, Any]) -> dict[str, Any]:
+        from . import ai
+
+        key = str(body.get("key") or "").strip()
+        if body.get("forget"):
+            ai.forget_key()
+        elif not key.startswith("sk-ant-") or len(key) > 300:
+            raise ValueError("That doesn't look like an Anthropic API key (they start with sk-ant-).")
+        else:
+            ai.save_key(key)
+        if self._catalog is not None:
+            self._catalog.ai_error = None
+            self._catalog._ai_tried.clear()
+        return ai.status()
 
     def diagnose(self, q: dict[str, str]) -> dict[str, Any]:
         s = self._store()
@@ -176,6 +278,14 @@ def make_handler(api: Api, port_ref: list[int]):
                     return self._json(api.diagnose(q))
                 if url.path == "/api/now":
                     return self._json(api.now())
+                if url.path == "/api/strip":
+                    return self._json(api.strip(int(q.get("points", 360))))
+                if url.path == "/api/what":
+                    return self._json(api.what(q))
+                if url.path == "/api/hardware":
+                    return self._json(api.hardware())
+                if url.path == "/api/storage":
+                    return self._json(api.storage_status())
                 return self._send(404, b"not found", "text/plain")
             except (KeyError, ValueError) as e:
                 return self._json({"error": str(e)}, 400)
@@ -186,8 +296,15 @@ def make_handler(api: Api, port_ref: list[int]):
             length = min(int(self.headers.get("Content-Length", 0)), 10_000)
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
-                if urlparse(self.path).path == "/api/mark":
+                path = urlparse(self.path).path
+                if path == "/api/mark":
                     return self._json(api.mark(body))
+                if path == "/api/ai":
+                    return self._json(api.set_ai_key(body))
+                if path == "/api/storage":
+                    return self._json(api.storage_status(start=True, private=bool(body.get("private"))))
+                if path == "/api/reveal":
+                    return self._json(api.storage.reveal(str(body.get("path", ""))))
                 return self._send(404, b"not found", "text/plain")
             except (KeyError, ValueError) as e:
                 return self._json({"error": str(e)}, 400)

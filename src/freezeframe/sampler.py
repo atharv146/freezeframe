@@ -54,6 +54,7 @@ class Sampler:
         self._net: tuple[int, int] | None = None
         self._procs: dict[int, _ProcState] = {}
         self._names: dict[int, str] = {}
+        self.paths: dict[str, str] = {}  # app -> a program path, for identifying the app later
         self._self = psutil.Process()
         self._self.cpu_percent(None)
         psutil.cpu_percent(None)
@@ -141,6 +142,8 @@ class Sampler:
                     cpu = 100.0 * _delta(cpu_seconds, prev.cpu_seconds) / dt
                 seen[pid] = _ProcState(cpu_seconds, io[0] if io else None, io[1] if io else None)
             app = app_name(name)
+            if app not in self.paths and ("/" in name or "\\" in name):
+                self.paths[app] = name
             acc = accs.setdefault(app, _AppAcc())
             acc.cpu += cpu
             acc.rss += rss

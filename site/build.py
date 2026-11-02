@@ -44,7 +44,8 @@ def export(db: Path) -> dict:
         if any(abs(s - t) <= 60 for s in sampled[:: max(1, len(sampled) // 400)]):
             moments.append({"at": t, "diagnosis": api.diagnose({"at": str(t)})["diagnosis"]})
         t += 60
-    return compact({"overview": overview, "timeline": timeline, "incidents": incidents, "moments": moments, "now": api.now()})
+    return compact({"overview": overview, "timeline": timeline, "incidents": incidents, "moments": moments, "now": api.now(),
+                    "strip": api.strip(), "hardware": api.hardware(), "storage": api.storage_status()})
 
 
 def main(out: str) -> None:

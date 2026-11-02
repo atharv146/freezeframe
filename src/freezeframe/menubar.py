@@ -14,6 +14,7 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
+from urllib.parse import quote
 
 from .store import Store
 from .tray import TrayState, tray_state
@@ -142,6 +143,8 @@ def run(db: Path) -> None:
         items += [
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Open Freezeframe", lambda icon, item: open_dashboard(), default=True),
+            pystray.MenuItem("What just happened?", lambda icon, item: open_dashboard("#what=" + quote("the last 10 minutes"))),
+            pystray.MenuItem("What happened at…", lambda icon, item: open_dashboard("#ask")),
             pystray.MenuItem("Something went wrong…", flag_problem),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit menu bar icon" if is_mac else "Quit tray icon", lambda icon, item: icon.stop()),

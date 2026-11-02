@@ -46,6 +46,7 @@ class Recorder:
         self._pending: list[tuple[int, Event, float]] = []  # incidents to re-diagnose once more data exists
         self.notify = notify_enabled
         self._last_notice = 0.0
+        self._saved_paths: set[str] = set()
 
     # -------------------------------------------------------------- lifecycle
 
@@ -108,6 +109,11 @@ class Recorder:
                 sample.interval = self.interval  # don't let the sleep look like a freeze in charts
         self._prev = (sample.ts, mono)
         self.store.add_sample(sample, apps)
+        known = getattr(self.sampler, "paths", {})
+        new_paths = {a.app: known[a.app] for a in apps if a.app in known and a.app not in self._saved_paths}
+        if new_paths:
+            self.store.set_app_paths(new_paths)
+            self._saved_paths.update(new_paths)
 
         for e in self.detectors.observe(sample, apps):
             self.store.add_event(e)

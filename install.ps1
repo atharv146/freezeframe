@@ -42,13 +42,13 @@ if ($LASTEXITCODE -ne 0) { Fail "couldn't create a Python environment in $AppDir
 
 $vpy = Join-Path $AppDir 'Scripts\python.exe'
 & $vpy -m pip install --quiet --disable-pip-version-check --upgrade pip
-# Includes the tray icon (pystray + Pillow).
+# Includes the tray icon (pystray + Pillow) and the optional AI add-on (inactive until you add an API key).
 if ($env:FREEZEFRAME_SOURCE) {
-    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "$($env:FREEZEFRAME_SOURCE)[menubar]"
+    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "$($env:FREEZEFRAME_SOURCE)[menubar,ai]"
 } else {
-    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade 'freezeframe[menubar]' 2>$null
+    & $vpy -m pip install --quiet --disable-pip-version-check --upgrade 'freezeframe[menubar,ai]' 2>$null
     if ($LASTEXITCODE -ne 0) {
-        & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe[menubar] @ $GithubZip"
+        & $vpy -m pip install --quiet --disable-pip-version-check --upgrade "freezeframe[menubar,ai] @ $GithubZip"
     }
 }
 if ($LASTEXITCODE -ne 0) { Fail 'pip could not install Freezeframe' }

@@ -145,7 +145,12 @@ def cmd_why(args: argparse.Namespace) -> int:
     if store is None:
         return 1
     if args.at:
-        t = parse_moment(args.at)
+        from .when import NotUnderstood, parse
+
+        try:
+            t = parse(args.at).center
+        except NotUnderstood:
+            t = parse_moment(args.at)
         d = diagnose(store, t, t, None, store.platform(sys.platform))
         print_diagnosis(d, f"What happened around {when(t)}: {d['short']}")
         return 0
@@ -161,6 +166,112 @@ def cmd_why(args: argparse.Namespace) -> int:
     print_diagnosis(d, f"The last 2 minutes: {d['short']}")
     if d["findings"][0]["cause"] in ("none", "quiet"):
         print(dim("  No freeze was detected recently. To look at an earlier moment:  freezeframe why --at 3:42pm\n"))
+    return 0
+
+
+def cmd_what(args: argparse.Namespace) -> int:
+    from .what import what_happened
+    from .when import NotUnderstood, parse
+
+    store = _open_store()
+    if store is None:
+        return 1
+    phrase = " ".join(args.when) or "the last 10 minutes"
+    try:
+        window = parse(phrase)
+    except NotUnderstood:
+        print(f"Freezeframe didn't understand “{phrase}”. Try:  freezeframe what 3:40pm  |  20 minutes ago  |  yesterday evening")
+        return 1
+    platform = store.platform(sys.platform)
+    r = what_happened(store, window, platform)
+    marks = {"problem": red("!"), "busy": red("*"), "note": "-", "ok": green("+")}
+    print()
+    print(bold(r["headline"]))
+    print(dim(f"{when(r['start'])} to {when(r['end'])}"))
+    print()
+    for line in r["lines"]:
+        print(f"  {marks[line['level']]} " + wrap(line["text"], "    ").lstrip())
+    if r["apps"]:
+        print()
+        print(bold("  Busiest apps"))
+        for a in r["apps"]:
+            print(f"  {a['app'][:28]:<28} {a['cpu_pct']:>5.1f}% of the computer   {human_bytes(a['rss_max']):>9}")
+    focus = r["focus"]
+    if focus:
+        e = store.event(focus["incident"]) if "incident" in focus else None
+        d = diagnose(store, e.ts if e else focus["at"], e.end_ts if e else focus["at"], e, platform)
+        print_diagnosis(d, "Most likely cause: " + d["short"])
+    else:
+        print()
+    return 0
+
+
+def cmd_ai(args: argparse.Namespace) -> int:
+    from . import ai
+
+    if args.off:
+        ai.forget_key()
+        print("Removed the saved API key. Freezeframe won't send anything to Anthropic.")
+        return 0
+    if args.key or args.on:
+        import getpass
+
+        key = args.key or getpass.getpass("Paste your Anthropic API key (from console.anthropic.com; it won't be shown): ")
+        if not key.strip().startswith("sk-ant-"):
+            print("That doesn't look like an Anthropic API key (they start with sk-ant-).")
+            return 1
+        ai.save_key(key)
+        print("Saved. Apps Freezeframe doesn't recognise will get a short description from Claude the next time you open the dashboard.")
+        print(dim("Only app names, developers and categories are sent. Turn it off with  freezeframe ai --off"))
+        if not ai.installed():
+            print("One more step: install the Anthropic package with  pip install 'freezeframe[ai]'")
+        return 0
+    st = ai.status()
+    print("AI descriptions: " + (green("on") if st["enabled"] else "off") + ("" if st["installed"] else dim("  (the anthropic package isn't installed)")))
+    if not st["enabled"]:
+        print(dim("Turn them on with  freezeframe ai --on  (you'll need an Anthropic API key)."))
+    return 0
+
+
+def cmd_computer(args: argparse.Namespace) -> int:
+    from .hardware import hardware
+    from .storage import StorageScan
+
+    h = hardware()
+    print()
+    print(bold(h["model"]) + dim(f"  {h['os']}"))
+    for sec in h["sections"]:
+        print()
+        print(bold("  " + sec["title"]))
+        for item in sec["items"]:
+            mark = {"good": green("+ "), "warning": red("! ")}.get(item.get("level") or "", "  ")
+            print(f"  {mark}{item['label']}: {item['value']}")
+            if item["note"]:
+                print(dim(wrap(item["note"], "      ")))
+    if args.space:
+        scan = StorageScan()
+        print()
+        print(bold("  Storage") + dim("  (adding up folder sizes, up to 30 s)"))
+        scan.start(private=args.all)
+        while scan.status()["state"] == "scanning":
+            time.sleep(0.3)
+        st = scan.status()
+        for v in st["volumes"]:
+            print(f"  {v['name']}: {human_bytes(v['used'])} used of {human_bytes(v['total'])}, {human_bytes(v['free'])} free")
+        for i in st["items"]:
+            if i["size"] < 100 * 1024**2 and not i["error"]:
+                continue
+            size = ("at least " if not i["complete"] else "") + human_bytes(i["size"])
+            print(f"  {i['label']:<28} {size:>18}")
+            for c in i["children"][:3]:
+                print(dim(f"      {c['name'][:40]:<40} {human_bytes(c['size']):>10}"))
+            if i["how"] and i["size"] >= 1024**3:
+                print(dim(wrap(i["how"], "      ")))
+        if not args.all:
+            print(dim("\n  To include Downloads, Desktop, Documents and the Trash:  freezeframe computer --space --all"))
+    else:
+        print(dim("\n  See what's using your disk space:  freezeframe computer --space"))
+    print()
     return 0
 
 
@@ -346,12 +457,27 @@ def main(argv: list[str] | None = None) -> int:
     r.set_defaults(func=cmd_record)
 
     w = sub.add_parser("why", help="explain the latest freeze, or a moment you choose")
-    w.add_argument("--at", help="a moment to explain: 3:42pm, 15:42, 10m (ago), or an ISO time")
+    w.add_argument("--at", help="a moment to explain: 3:42pm, 15:42, 10m (ago), 20 minutes ago, or an ISO time")
     w.add_argument("--within", type=float, default=30, help="look for incidents in the last N minutes (default 30)")
     w.add_argument("--cached", action="store_true", help=argparse.SUPPRESS)
     w.set_defaults(func=cmd_why)
 
     sub.add_parser("now", help="what your computer is doing right now, and things worth knowing").set_defaults(func=cmd_now)
+
+    wh = sub.add_parser("what", help="what happened at a time you describe: 3pm, 20 minutes ago, yesterday evening")
+    wh.add_argument("when", nargs="*", help="a time in your own words (default: the last 10 minutes)")
+    wh.set_defaults(func=cmd_what)
+
+    cp = sub.add_parser("computer", help="what's inside this computer, and where the disk space went")
+    cp.add_argument("--space", action="store_true", help="also measure what's using disk space")
+    cp.add_argument("--all", action="store_true", help="include Downloads, Desktop, Documents and the Trash (your OS may ask permission)")
+    cp.set_defaults(func=cmd_computer)
+
+    a = sub.add_parser("ai", help="turn on short AI descriptions for apps Freezeframe doesn't recognise")
+    a.add_argument("--on", action="store_true", help="paste an Anthropic API key to turn it on")
+    a.add_argument("--key", help=argparse.SUPPRESS)
+    a.add_argument("--off", action="store_true", help="remove the key and turn it off")
+    a.set_defaults(func=cmd_ai)
 
     ls = sub.add_parser("list", help="list recorded incidents")
     ls.add_argument("--limit", type=int, default=20)

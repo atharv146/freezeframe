@@ -14,12 +14,13 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
 
 import psutil
 
+from .catalog import Catalog, hour_usage, verdict
 from .detect import GB, MB, cores, human_bytes
-from .knowledge import lookup
 from .models import INCIDENT_KINDS
 from .reports import fmt_duration
 from .store import Store
@@ -85,20 +86,25 @@ def machine() -> dict[str, Any]:
 
 # -------------------------------------------------------------- snapshot
 
-def snapshot(store: Store, info: dict[str, Any]) -> dict[str, Any]:
+def snapshot(store: Store, info: dict[str, Any], catalog: Catalog | None = None, db: Path | None = None) -> dict[str, Any]:
     _, last = store.bounds()
     if last is None:
         return {"sample": None, "apps": [], "machine": info}
     s = store.samples(last - 0.001, last + 0.001)[-1]
     apps = [a for _, a in store.app_rows(last - 0.001, last + 0.001)]
     apps.sort(key=lambda a: a.rss + a.cpu * 20 * MB, reverse=True)
+    catalog = catalog or Catalog(store.platform(sys.platform), use_details=False)
+    described = catalog.describe(store, [(a.app, a.top_name) for a in apps], db)
+    hour = hour_usage(store, last)
+    device = {"darwin": "your Mac", "win32": "your PC"}.get(info.get("platform", sys.platform), "your computer")
     out_apps = []
     for a in apps:
-        k = lookup(a.app, a.top_name)
+        d = described[a.app]
+        h = hour.get(a.app)
         out_apps.append({
-            "app": a.app, "cpu": round(a.cpu, 1), "rss": a.rss, "nproc": a.nproc, "top_name": a.top_name,
-            "what": k.what if k else None, "normal": k.normal if k else None, "tip": k.tip if k else None,
-            "kind": k.kind if k else None,
+            "app": a.app, "cpu": round(a.cpu, 1), "rss": a.rss, "nproc": a.nproc, "top_name": a.top_name, **d,
+            "hour": {"cpu_avg": round(h["cpu_avg"], 2), "cpu_max": round(h["cpu_max"], 1), "rss_max": h["rss_max"]} if h else None,
+            "verdict": verdict(a.app, d["kind"], h, a.rss, info, d.get("menubar", False), device),
         })
     return {"sample": asdict(s), "apps": out_apps, "machine": info}
 
@@ -109,7 +115,7 @@ def _minutes(n_samples: int, step: float) -> str:
     return fmt_duration(n_samples * step)
 
 
-def insights(store: Store, info: dict[str, Any], now: float | None = None) -> list[Insight]:
+def insights(store: Store, info: dict[str, Any], now: float | None = None, snap: dict[str, Any] | None = None) -> list[Insight]:
     _, last = store.bounds()
     now = last if now is None else now
     out: list[Insight] = []
@@ -205,12 +211,13 @@ def insights(store: Store, info: dict[str, Any], now: float | None = None) -> li
         out.append(Insight("tip", e.title, f"If {e.app} gets slow or the computer starts swapping, quitting and reopening it gives the memory back.", e.app))
 
     # What's happening right now.
-    snap = snapshot(store, info)
+    snap = snap or snapshot(store, info)
     s = snap["sample"]
     if s:
         for a in snap["apps"]:
             if a["kind"] == "background" and a["cpu"] >= 50:
-                out.append(Insight("info", f"{a['app']} is busy right now ({cores(a['cpu'])})", f"It's {a['what']} {a['normal']} {a['tip']}".strip(), a["app"]))
+                about = f"It's {a['what']}" if a["what"] else (a["about"] or "")
+                out.append(Insight("info", f"{a['app']} is busy right now ({cores(a['cpu'])})", " ".join(x for x in (about, a["normal"], a["tip"]) if x), a["app"]))
         apps = snap["apps"]
         if apps and s["mem_total"]:
             big = max(apps, key=lambda a: a["rss"])

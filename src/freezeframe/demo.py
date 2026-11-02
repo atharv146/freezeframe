@@ -156,5 +156,78 @@ def build_demo(path: str | Path | None = None, end: float | None = None, seed: i
         "disk_total": 494 * GB, "disk_free": 37 * GB, "uptime": 9.3 * 86400,
         "battery": {"percent": 64, "plugged": True, "cycles": 412, "design_cycles": 1000, "health": 86},
     })
+    store.set_meta("hardware", DEMO_HARDWARE)
+    store.set_meta("storage", _demo_storage())
     store.close()
     return path
+
+
+def _item(label: str, value: str, note: str = "", level: str | None = None) -> dict:
+    return {"label": label, "value": value, "note": note, "level": level}
+
+
+DEMO_HARDWARE = {
+    "model": "MacBook Air", "detail": "demo", "os": "macOS 26 (demo)", "uptime": 9.3 * 86400,
+    "sections": [
+        {"title": "Processor", "items": [
+            _item("Chip", "Apple M-series (demo)", "Apple's own chip: the processor, graphics and memory in one package."),
+            _item("Cores", "8 (4 performance, 4 efficiency)", "Performance cores take on heavy work; efficiency cores run background tasks "
+                                                               "using less power. That's why 100% in Freezeframe means every core is busy."),
+        ]},
+        {"title": "Memory", "items": [
+            _item("Memory", "16 GB", "Plenty for everyday use and a few heavy apps at once."),
+            _item("Type", "Unified memory", "Shared by the processor and graphics, and built into the chip, so it can't be upgraded later."),
+        ]},
+        {"title": "Graphics and displays", "items": [
+            _item("Graphics", "Apple M-series, 10 cores", "Draws everything on screen and speeds up video, games and photo editing."),
+            _item("Built-in display", "Looks like 1470 x 956 (2940 x 1912 pixels)"),
+            _item("LG UltraFine", "Looks like 2560 x 1440", "External displays add work for the graphics chip and for WindowServer."),
+        ]},
+        {"title": "Storage", "items": [
+            _item("Internal drive", "494 GB SSD", "A solid-state drive: fast, silent, no moving parts."),
+            _item("Drive self-test (SMART)", "Passed", "The drive checks itself for wear and errors and reports no problems.", "good"),
+        ]},
+        {"title": "Battery", "items": [
+            _item("Battery health", "86%", "Normal wear. It holds a bit less charge than new.", "good"),
+            _item("Charge cycles", "412", "One cycle is 100% worth of charging, spread over any number of charges. Batteries like this one are rated for about 1,000."),
+        ]},
+    ],
+}
+
+
+def _demo_storage() -> dict:
+    """A made-up storage scan matching the demo machine (494 GB drive, 37 GB free)."""
+    from dataclasses import asdict
+
+    from .storage import Place
+
+    apps = [("Xcode.app", 11.8), ("Final Cut Pro.app", 6.1), ("GarageBand.app", 3.4), ("Microsoft Excel.app", 2.2), ("Zoom.app", 0.6)]
+    found = [
+        (Place("steam", "Steam games", "~/Library/Application Support/Steam/steamapps", "Games installed through Steam.",
+               "Uninstall games you're not playing from Steam's library; they can be downloaded again any time."), 46.3),
+        (Place("movies", "Movies", "~/Movies", "Videos, screen recordings and iMovie or Final Cut projects.",
+               "Move finished projects and old recordings to an external drive or the cloud."), 38.5),
+        (Place("apps", "Apps and games", "/Applications", "Everything installed in the Applications folder. Games are often the biggest.",
+               "Drag apps you no longer use to the Trash, or remove them in System Settings > General > Storage > Applications.",
+               list_children=True), 31.0),
+        (Place("xcode", "Xcode build files", "~/Library/Developer/Xcode/DerivedData",
+               "Leftovers from building apps in Xcode. Completely safe to delete; Xcode rebuilds them when needed.",
+               "Delete the folder's contents, or in Xcode: Settings > Locations > Derived Data, then click the arrow and delete."), 21.7),
+        (Place("simulators", "iPhone simulators", "~/Library/Developer/CoreSimulator/Devices", "Simulated iPhones and iPads used by Xcode.",
+               "Run  xcrun simctl delete unavailable  to remove ones for old iOS versions."), 18.9),
+        (Place("caches", "App caches", "~/Library/Caches", "Temporary files apps keep to load faster. Apps recreate what they need.",
+               "Usually not worth clearing by hand: space comes back only until apps rebuild it."), 14.2),
+        (Place("devcache", "Developer tool caches", "~/.cache", "Downloads cached by developer tools (pip, Hugging Face models and others).",
+               "Safe to clear the folders of tools you no longer use."), 9.8),
+        (Place("music", "Music", "~/Music", "Your music library and GarageBand projects.",
+               "GarageBand sound libraries can be removed from GarageBand > Sound Library."), 4.1),
+        (Place("npm", "Node.js package cache", "~/.npm", "Copies of downloaded JavaScript packages.", "Safe to clear: npm cache clean --force"), 2.6),
+    ]
+    items = []
+    for place, gb in found:
+        place.size, place.files = int(gb * GB), int(gb * 9000)
+        if place.list_children:
+            place.children = [{"name": n, "path": f"/Applications/{n}", "size": int(g * GB)} for n, g in apps]
+        items.append(asdict(place))
+    return {"state": "done", "private": False, "demo": True, "items": items,
+            "volumes": [{"name": "This computer's drive", "mount": "/", "total": 494 * GB, "used": 457 * GB, "free": 37 * GB}]}

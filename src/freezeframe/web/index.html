@@ -17,6 +17,11 @@
         <span class="name">Freezeframe</span>
       </div>
       <p class="status" id="status" role="status"></p>
+      <form class="ask" id="ask-form" role="search">
+        <label for="ask-input">What happened at</label>
+        <input id="ask-input" maxlength="80" autocomplete="off" placeholder="3:40pm, 20 min ago, yesterday evening" />
+        <button type="submit">Ask</button>
+      </form>
       <button type="button" class="primary" id="mark-open">Something went wrong</button>
     </header>
 
@@ -46,9 +51,11 @@
         <div class="views" role="tablist" aria-label="View">
           <button type="button" role="tab" id="tab-now" aria-selected="true" aria-controls="now-view">Right now</button>
           <button type="button" role="tab" id="tab-timeline" aria-selected="false" aria-controls="timeline-view">Timeline</button>
+          <button type="button" role="tab" id="tab-computer" aria-selected="false" aria-controls="computer-view">This computer</button>
         </div>
 
         <div id="now-view" role="tabpanel" aria-labelledby="tab-now"></div>
+        <div id="computer-view" role="tabpanel" aria-labelledby="tab-computer" hidden></div>
 
         <div id="timeline-view" role="tabpanel" aria-labelledby="tab-timeline" hidden>
         <div class="toolbar">
@@ -60,24 +67,41 @@
             <button type="button" data-range="all">Everything</button>
           </div>
           <div class="pan" role="group" aria-label="Move in time">
-            <button type="button" id="pan-back" aria-label="Earlier">Earlier</button>
-            <button type="button" id="pan-fwd" aria-label="Later">Later</button>
+            <button type="button" id="pan-back" title="Earlier (left arrow)">Earlier</button>
+            <button type="button" id="pan-fwd" title="Later (right arrow)">Later</button>
+            <button type="button" id="pan-now" title="Jump to the latest recording">Now</button>
           </div>
-          <p class="range-label" id="range-label"></p>
+          <div class="pan" role="group" aria-label="Zoom">
+            <button type="button" id="zoom-out" title="Zoom out (minus key)">Zoom out</button>
+            <button type="button" id="zoom-in" title="Zoom in (plus key)">Zoom in</button>
+          </div>
+          <div class="pan" role="group" aria-label="Jump between problems">
+            <button type="button" id="prev-problem" title="Previous problem ([ key)">Previous problem</button>
+            <button type="button" id="next-problem" title="Next problem (] key)">Next problem</button>
+          </div>
         </div>
+
+        <div class="strip" id="strip" aria-label="The whole recording. Drag the highlighted window or click anywhere to move there.">
+          <canvas></canvas>
+          <div class="strip-window" id="strip-window"></div>
+        </div>
+        <p class="range-label" id="range-label"></p>
+
+        <div class="range-summary" id="range-summary"></div>
 
         <div class="lanes" id="lanes">
           <div class="lane" data-lane="events"><div class="lane-label">Events</div><canvas></canvas></div>
-          <div class="lane" data-lane="cpu"><div class="lane-label">CPU<span>share of the whole processor</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="cpu-apps"><div class="lane-label">Your apps<span>how hard the processor worked for apps you use</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="cpu-bg"><div class="lane-label">Background and system<span>the OS, helpers, sync and menu-bar tools</span></div><canvas></canvas></div>
           <div class="lane" data-lane="mem"><div class="lane-label">Memory<span>in use, by app</span></div><canvas></canvas></div>
-          <div class="lane" data-lane="swap"><div class="lane-label">Swapping<span>memory moved to disk</span></div><canvas></canvas></div>
-          <div class="lane" data-lane="disk"><div class="lane-label">Disk<span>reads and writes</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="swap"><div class="lane-label">Swapping<span>memory moved to disk when it runs out (slow)</span></div><canvas></canvas></div>
+          <div class="lane" data-lane="disk"><div class="lane-label">Disk<span>reading and writing files</span></div><canvas></canvas></div>
           <div class="lane" data-lane="freeze"><div class="lane-label">Freezes and heat</div><canvas></canvas></div>
           <div class="crosshair" id="crosshair" hidden></div>
           <div class="selection" id="drag" hidden></div>
         </div>
         <div class="legend" id="legend" aria-label="Legend"></div>
-        <p class="chart-hint">Click any moment to see what was going on. Drag across the chart to zoom in.</p>
+        <p class="chart-hint">Click any moment to see what was going on. Drag across the chart to zoom in. Scroll sideways or use the arrow keys to move, and + or − to zoom.</p>
 
         <article class="explain" id="explain" aria-live="polite"></article>
         </div>

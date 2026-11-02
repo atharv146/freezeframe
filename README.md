@@ -6,7 +6,7 @@
 
 **[Try the live demo in your browser](https://atharv146.github.io/freezeframe/)**, no install needed, or [install it](#install) in one line.
 
-![The Freezeframe dashboard explaining a 9-second freeze: a browser tab leaked memory for an hour until the Mac ran out and started swapping](docs/dashboard.png)
+![The Freezeframe timeline over four hours: plain numbers for the stretch on top, processor use split into your apps and background, with spikes labeled (zoom.us, mds_stores, kernel_task), memory climbing as a browser tab leaks, and three freezes marked](docs/dashboard.png)
 
 ## Why
 
@@ -47,15 +47,42 @@ In that recording it had also flagged *"Brave Browser has been growing steadily 
 Freezeframe also answers the everyday question: *what is my computer doing right now, and is that normal?* The **Right now** view (or `freezeframe now` in a terminal) shows:
 - CPU and memory broken down by app, with each app's helper processes added up;
 - disk space, battery health and uptime;
-- a description of every running app: what it is, what's normal for it, and what to do if it's causing trouble ("mds_stores is Spotlight indexing your files; it's heavy after updates and stops on its own").
+- a description of every running app: what it is, what's normal for it, and what to do if it's causing trouble ("mds_stores is Spotlight indexing your files; it's heavy after updates and stops on its own");
+- for each app, whether it's fine to leave open, based on what it actually used over the last hour: *Made to stay open*, *Fine to leave open*, *OK to leave open*, or *Close when not using*. Point at an app to see why.
+
+Apps that aren't in Freezeframe's built-in list are identified from their own details: who signed them, their App Store category, whether they live in the menu bar, whether they're built on Electron ("AltTab: a utilities app by Louis Pontoise. It lives in the menu bar instead of the Dock, so it keeps running with no window open"). If you add your own Anthropic API key, Claude writes a short plain-English description for the rest, once per app. Only app names, developers and categories are sent; it's off until you turn it on (`freezeframe ai --on`, or the button in the dashboard).
 
 Above that, **Worth knowing** pulls out what matters from the last day: a disk that's nearly full, a battery that's worn out, memory that was tight for an hour, an app that seems to be leaking memory, or simply that nothing needs your attention.
 
-![The Right now view: readouts for CPU, memory, disk, battery and uptime, memory and CPU by app, a list of things worth knowing, and plain-English descriptions of each running app](docs/right-now.png)
+![What's running: each app with a plain-English description, memory, its share of the processor, and whether it's fine to leave open; pointing at Slack shows why it's fine to leave open](docs/right-now.png)
+
+## "What happened at 3pm?"
+
+Type a time the way you'd say it, in the dashboard's **What happened at** box or in a terminal, and Freezeframe looks over that stretch: `3:40pm`, `around 3`, `20 minutes ago`, `the last hour`, `yesterday evening`, `between 2 and 3pm`. It answers with the freezes, hangs and crashes in that window first, then whether the processor, memory, disk or heat were under strain and which app was responsible, then the most likely cause. When nothing stood out it says so, and says what it can't see (a slow website, the network).
+
+![Asking "around 9:40am": the Mac was under strain, memory ran low because Brave Browser was using 9.2 GB, it was swapping, and the most likely cause is running out of memory](docs/what-happened.png)
+
+```
+$ freezeframe what around 9:20am
+Your Mac was under strain around 9:20 AM
+  * Memory ran low for 18 min, down to 256 MB free around 9:16 AM; Brave Browser was using 8.7 GB.
+  * Your Mac was moving memory to and from the disk (swapping) for 18 min.
+  + The processor was calm: 16% on average, never above 19%.
+```
+
+## A timeline anyone can read
+
+The timeline opens with plain numbers for the stretch on screen (average and peak processor use, the busiest app, peak memory, how many problems), then splits processor use into **Your apps** and **Background and system**, so it's obvious whether a spike came from something you opened or from the OS. The biggest spikes are labeled with their size and the app behind them. A strip above the charts shows the whole recording; drag its window or click anywhere to move there. Arrow keys, a sideways trackpad swipe, + and −, and **Previous / Next problem** get you around.
+
+## This computer
+
+The **This computer** tab (or `freezeframe computer --space`) explains the hardware in practical terms ("16 GB: plenty for everyday use and a few heavy apps at once"), shows the drive's self-test result and battery health, and finds what's using disk space: apps and games, caches, videos, Xcode build files, simulators, phone backups, Steam games, developer caches, each with how to free it safely. It only measures; it never deletes anything. Downloads, Desktop, Documents and the Trash are only measured when you ask, since your OS asks permission first.
+
+![This computer: the chip, memory, graphics, drive and battery, each explained, and a disk space breakdown with Steam games, movies, apps, Xcode build files and how to free each](docs/this-computer.png)
 
 ## Lives in your menu bar
 
-After installing, a Freezeframe icon sits in the macOS menu bar (or the Windows system tray), so you never need a terminal. Click it to see live CPU and memory, the apps using the most memory, the latest incident with its cause, and anything that needs your attention. From there you can open the dashboard or press **Something went wrong…** the moment you notice a problem. A small badge appears on the icon after a freeze or when memory runs critically low, and freezes of three seconds or more also pop up as a desktop notification with the cause.
+After installing, a Freezeframe icon sits in the macOS menu bar (or the Windows system tray), so you never need a terminal. Click it to see live CPU and memory, the apps using the most memory, the latest incident with its cause, and anything that needs your attention. From there you can open the dashboard, ask **What just happened?**, or press **Something went wrong…** the moment you notice a problem. A small badge appears on the icon after a freeze or when memory runs critically low, and freezes of three seconds or more also pop up as a desktop notification with the cause.
 
 ## What it catches
 
@@ -72,7 +99,7 @@ After installing, a Freezeframe icon sits in the macOS menu bar (or the Windows 
 
 Each verdict comes with the numbers behind it, a confidence level, and what to do about it, tailored to Mac, Windows or Linux. When nothing was busy during a freeze, it says so. That's a finding too: a calm machine that still froze points at drivers or hardware, not your apps.
 
-![Dark mode: a 4-second freeze explained as overheating, with kernel_task throttling the CPU during a Zoom call](docs/dashboard-dark.png)
+![Dark mode: the 16 minutes around a 4-second freeze during a Zoom call, with zoom.us in the Your apps lane and kernel_task in the Background lane as the Mac overheats](docs/dashboard-dark.png)
 
 ## Install
 
@@ -108,7 +135,10 @@ To remove it: `freezeframe uninstall` stops the background recording and `freeze
 |---|---|
 | `freezeframe now` | What's running right now, explained, plus things worth knowing |
 | `freezeframe why` | Explains the latest freeze, or the last two minutes if nothing froze |
-| `freezeframe why --at 3:42pm` | Explains a moment you choose (`10m`, `15:42` and ISO times work too) |
+| `freezeframe what 20 minutes ago` | What happened at a time you describe, in your own words |
+| `freezeframe why --at 3:42pm` | Explains one moment you choose |
+| `freezeframe computer --space` | What's inside this computer, and where the disk space went |
+| `freezeframe ai --on` | Describe unfamiliar apps with Claude, using your own API key |
 | `freezeframe mark "zoom froze"` | Notes that something just went wrong and explains the moments before it |
 | `freezeframe list` / `show <n>` | Lists incidents / explains one |
 | `freezeframe open` | Opens the timeline dashboard in your browser |
@@ -138,7 +168,7 @@ In the dashboard, **Right now** shows the live breakdown. On the **Timeline**, c
 
 ## Privacy
 
-Everything stays on your computer. Nothing is uploaded. The dashboard listens only on `127.0.0.1` and rejects requests from other websites by checking the `Host` and `Origin` headers.
+Everything stays on your computer. Nothing is uploaded, with one opt-in exception: if you add an Anthropic API key, the names, developers and categories of apps Freezeframe doesn't recognize are sent to Claude to be described (requests use `claude-opus-5-5` with server-side fallbacks enabled). No file paths, window titles or usage data are sent. The dashboard listens only on `127.0.0.1` and rejects requests from other websites by checking the `Host` and `Origin` headers.
 
 ## Platform support
 
@@ -170,6 +200,10 @@ The tests cover:
 - the CLI.
 
 CI runs the tests on macOS, Windows and Linux.
+
+## Contributing
+
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The easiest way to help is adding apps to the knowledge base in `src/freezeframe/knowledge.py`.
 
 ## License
 

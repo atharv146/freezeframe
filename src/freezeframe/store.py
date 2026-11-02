@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_ts ON events (ts);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS app_paths (app TEXT PRIMARY KEY, path TEXT, ts REAL);
+CREATE TABLE IF NOT EXISTS app_notes (app TEXT PRIMARY KEY, note TEXT, ts REAL);
 """
 
 SAMPLE_COLUMNS = [
@@ -98,6 +100,22 @@ class Store:
         with self.db:
             self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, json.dumps(value)))
 
+    def set_app_paths(self, paths: dict[str, str]) -> None:
+        """Where each app's program lives, so it can be identified later."""
+        with self.db:
+            self.db.executemany(
+                "INSERT INTO app_paths (app, path, ts) VALUES (?, ?, ?) ON CONFLICT(app) DO UPDATE SET path = excluded.path, ts = excluded.ts",
+                [(a, p, time.time()) for a, p in paths.items()],
+            )
+
+    def set_app_notes(self, notes: dict[str, dict[str, Any]]) -> None:
+        """Descriptions written by an AI model, kept so each app is only described once."""
+        with self.db:
+            self.db.executemany(
+                "INSERT OR REPLACE INTO app_notes (app, note, ts) VALUES (?, ?, ?)",
+                [(a, json.dumps(n), time.time()) for a, n in notes.items()],
+            )
+
     def prune(self, now: float | None = None, keep_days: float = 2, keep_incident_days: float = 30) -> int:
         """Drops old samples, except around incidents, which are kept much longer."""
         now = time.time() if now is None else now
@@ -124,6 +142,12 @@ class Store:
         """The OS the recording was made on (it can be opened elsewhere)."""
         meta = self.meta()
         return meta.get("platform") or (meta.get("recorder") or {}).get("platform") or default
+
+    def app_paths(self) -> dict[str, str]:
+        return {r["app"]: r["path"] for r in self.db.execute("SELECT app, path FROM app_paths")}
+
+    def app_notes(self) -> dict[str, dict[str, Any]]:
+        return {r["app"]: json.loads(r["note"]) for r in self.db.execute("SELECT app, note FROM app_notes")}
 
     def bounds(self) -> tuple[float | None, float | None]:
         r = self.db.execute("SELECT min(ts), max(ts) FROM samples").fetchone()
@@ -162,7 +186,7 @@ class Store:
                       max(disk_read) AS disk_read, max(disk_write) AS disk_write,
                       max(net_rx) AS net_rx, max(net_tx) AS net_tx,
                       max(pressure) AS pressure, max(thermal) AS thermal,
-                      max(interval) AS interval, avg(self_cpu) AS self_cpu, min(battery) AS battery
+                      max(interval) AS interval, avg(self_cpu) AS self_cpu, min(battery) AS battery, count(*) AS n
                FROM samples WHERE ts BETWEEN :start AND :end GROUP BY t ORDER BY t""",
             {"start": start, "end": end, "step": step},
         ).fetchall()
@@ -182,16 +206,28 @@ class Store:
         apps.sort(key=lambda a: a["cpu_avg"] / 100 + a["rss_max"] / 2e9, reverse=True)
         return apps[:limit]
 
-    def app_series(self, start: float, end: float, step: float, apps: list[str]) -> dict[str, list[dict[str, Any]]]:
+    def app_series(self, start: float, end: float, step: float, apps: list[str],
+                   counts: dict[float, int] | None = None) -> dict[str, list[dict[str, Any]]]:
+        """Per-app CPU and memory in buckets. CPU is averaged over every sample in the bucket,
+        counting samples where the app wasn't among the recorded ones as zero."""
         out: dict[str, list[dict[str, Any]]] = {}
         for app in apps:
             rows = self.db.execute(
-                """SELECT CAST(ts / :step AS INTEGER) * :step AS t, avg(cpu) AS cpu, max(rss) AS rss
+                """SELECT CAST(ts / :step AS INTEGER) * :step AS t, sum(cpu) AS cpu, count(*) AS n, max(rss) AS rss
                    FROM apps WHERE app = :app AND ts BETWEEN :start AND :end GROUP BY t ORDER BY t""",
                 {"step": step, "app": app, "start": start, "end": end},
             ).fetchall()
-            out[app] = [dict(r) for r in rows]
+            out[app] = [{"t": r["t"], "cpu": r["cpu"] / max(r["n"], (counts or {}).get(r["t"], r["n"])), "rss": r["rss"]} for r in rows]
         return out
+
+    def bucket_apps(self, start: float, end: float, step: float) -> list[dict[str, Any]]:
+        """Total CPU per app per bucket (summed over samples), for every recorded app."""
+        rows = self.db.execute(
+            """SELECT CAST(ts / :step AS INTEGER) * :step AS t, app, sum(cpu) AS cpu_sum, max(top_name) AS top_name
+               FROM apps WHERE ts BETWEEN :start AND :end GROUP BY t, app""",
+            {"step": step, "start": start, "end": end},
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def events(self, start: float, end: float, kinds: Iterable[str] | None = None, min_severity: int = 0) -> list[Event]:
         sql = "SELECT * FROM events WHERE COALESCE(end_ts, ts) >= ? AND ts <= ? AND severity >= ?"
