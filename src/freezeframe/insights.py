@@ -46,8 +46,11 @@ def _mac_battery() -> dict[str, Any]:
         return {}
     design = data.get("DesignCapacity")
     raw_max = data.get("AppleRawMaxCapacity")
+    max_cap = data.get("MaxCapacity")
     info: dict[str, Any] = {"cycles": data.get("CycleCount"), "design_cycles": data.get("DesignCycleCount9C")}
-    if design and raw_max:
+    if isinstance(max_cap, int) and 0 < max_cap <= 100:
+        info["health"] = max_cap  # Apple silicon: the same "Maximum Capacity" System Settings shows
+    elif design and raw_max:
         info["health"] = round(100 * raw_max / design)
     return info
 

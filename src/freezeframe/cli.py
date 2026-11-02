@@ -393,8 +393,36 @@ def cmd_open(args: argparse.Namespace) -> int:
         path = db_path()
         if not path.exists():
             Store(path).close()
+        url = _running_dashboard()
+        if url and not args.port:
+            # The menu-bar icon already serves the dashboard, always on the latest version.
+            print(f"Freezeframe dashboard: {url}")
+            if not args.no_browser:
+                import webbrowser
+
+                webbrowser.open(url)
+            return 0
     serve(path, port=args.port, open_browser=not args.no_browser)
     return 0
+
+
+def _running_dashboard() -> str | None:
+    """The menu-bar icon's dashboard, if it's running this version on the usual port."""
+    import http.client
+    import json as _json
+
+    from .menubar import PREFERRED_PORT
+
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", PREFERRED_PORT, timeout=1)
+        conn.request("GET", "/api/overview", headers={"Host": f"127.0.0.1:{PREFERRED_PORT}"})
+        r = conn.getresponse()
+        o = _json.loads(r.read()) if r.status == 200 else {}
+    except (OSError, ValueError):
+        return None
+    if o.get("version") == __version__ and not o.get("demo"):
+        return f"http://127.0.0.1:{PREFERRED_PORT}/"
+    return None
 
 
 def cmd_menubar(args: argparse.Namespace) -> int:

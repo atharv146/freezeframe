@@ -1427,3 +1427,23 @@ table.apps {
     min-width: 0;
   }
 }
+
+.demo-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--warning);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.demo-note b {
+  color: var(--ink);
+}
+
+.demo-note a {
+  color: inherit;
+  font-weight: 700;
+}

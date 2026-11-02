@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from . import __version__
 from .catalog import Catalog
 from .diagnose import diagnose
 from .models import INCIDENT_KINDS, Event
@@ -92,7 +93,7 @@ class Api:
             live = last is not None and time.time() - last < 3 * float(rec.get("interval", 2)) + 5
             return {
                 "first": first, "last": last, "now": time.time(), "live": live, "platform": platform,
-                "recorder": rec, "demo": bool(meta.get("demo")),
+                "recorder": rec, "demo": bool(meta.get("demo")), "version": __version__,
                 "incidents": [_event_json(e) for e in s.incidents(200)],
             }
         finally:

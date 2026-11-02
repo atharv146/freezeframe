@@ -367,6 +367,13 @@ function stackBar(parts, total) {
     <div class="bar-legend">${parts.filter((p) => !p.hideLegend).map((p) => `<span class="item">${p.colour ? `<span class="swatch" style="background:${p.colour}"></span>` : ''}${esc(p.label)} <span class="v">${esc(p.text)}</span></span>`).join('')}</div>`;
 }
 
+/** Demo recordings show a made-up MacBook; say so where its numbers appear. */
+function demoNote() {
+  const o = state.overview;
+  if (!o.demo && !o.site) return '';
+  return `<p class="demo-note"><b>Demo data.</b> These numbers are from a made-up MacBook, not your computer. ${o.site ? '<a href="https://github.com/atharv146/freezeframe#install">Install Freezeframe</a> to see your own.' : 'Run <code>freezeframe open</code> without <code>--demo</code> to see your own.'}</p>`;
+}
+
 const VERDICT_CLASS = { fine: 'v-fine', ok: 'v-ok', heavy: 'v-heavy' };
 let nowApps = new Map();
 
@@ -474,6 +481,7 @@ function renderNow(n) {
 
   const open = new Set([...document.querySelectorAll('.running details[open]')].map((d) => d.dataset.app));
   $('now-view').innerHTML = `
+    ${demoNote()}
     <div class="readouts">${readouts.map((r) => `<div class="readout"><div class="label">${esc(r.label)}</div><div class="value">${esc(r.value)}</div><div class="sub">${esc(r.sub)}</div></div>`).join('')}</div>
     <div class="breakdown"><h3>Memory by app</h3>${stackBar(memParts, s.mem_total)}</div>
     <div class="breakdown"><h3>Processor by app <span class="h-sub">share of the whole computer</span></h3>${stackBar(cpuParts, 100)}</div>
@@ -562,6 +570,7 @@ function renderComputer(hw, storage) {
   const sections = hw.sections.map((sec) => `<section class="hw-card"><h3>${esc(sec.title)}</h3><dl>${sec.items.map((i) => `
       <div class="hw-item"><dt>${esc(i.label)}</dt><dd><span class="hw-value">${level(i.level)}${esc(i.value)}</span>${i.note ? `<span class="hw-note">${esc(i.note)}</span>` : ''}</dd></div>`).join('')}</dl></section>`).join('');
   $('computer-view').innerHTML = `
+    ${demoNote()}
     <div class="computer-head"><h2>${esc(hw.model)}</h2><p>${esc(hw.os)}${hw.uptime ? `, running for ${hw.uptime >= 172800 ? `${(hw.uptime / 86400).toFixed(1)} days` : duration(hw.uptime)} since the last restart` : ''}</p></div>
     ${hw.error ? `<p class="ai-bar error">${esc(hw.error)}</p>` : ''}
     <div class="hw-grid">${sections}</div>
@@ -1356,7 +1365,12 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
 
 async function refreshLive() {
   if (!state.overview?.live) return;
+  const version = state.overview.version;
   await loadOverview();
+  if (version && state.overview.version && version !== state.overview.version) {
+    location.reload(); // Freezeframe was updated: load the new dashboard
+    return;
+  }
   if (currentView === 'now') {
     if (!document.querySelector('.ai-bar form:not([hidden])')) await loadNow(); // don't wipe a half-typed key
     return;
