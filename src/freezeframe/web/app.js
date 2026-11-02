@@ -67,6 +67,8 @@ function css(name) {
 // ------------------------------------------------------------------- API
 
 async function api(path, options) {
+  // The public website has no server; a static stand-in answers from exported data.
+  if (window.freezeframeApi) return window.freezeframeApi(path, options);
   const res = await fetch(path, options);
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
   return res.json();
@@ -158,7 +160,8 @@ function renderStatus() {
   const o = state.overview;
   const host = o.recorder?.host ? ` on ${esc(o.recorder.host)}` : '';
   let html;
-  if (o.demo) html = `<span class="dot"></span>Demo recording: four made-up hours of a MacBook, to show what Freezeframe finds.`;
+  if (o.site) html = `<span class="dot"></span>Live demo with four made-up hours of a MacBook. <a href="https://github.com/atharv146/freezeframe#install">Install Freezeframe</a> to record your own computer.`;
+  else if (o.demo) html = `<span class="dot"></span>Demo recording: four made-up hours of a MacBook, to show what Freezeframe finds.`;
   else if (!o.first) html = `<span class="dot"></span>Nothing recorded yet.`;
   else if (o.live) html = `<span class="dot live"></span>Recording${host}. Last sample ${Math.max(0, Math.round(o.now - o.last))} s ago.`;
   else html = `<span class="dot"></span>Not recording right now. The recording ends ${esc(when(o.last))}.`;
@@ -629,7 +632,11 @@ lanesEl.addEventListener('pointerdown', (ev) => {
   if (!state.data || !ev.target.matches('canvas')) return;
   const { x, t } = eventTime(ev);
   drag = { x0: x, x1: x, t0: t };
-  lanesEl.setPointerCapture(ev.pointerId);
+  try {
+    lanesEl.setPointerCapture(ev.pointerId);
+  } catch {
+    // Not every pointer can be captured (e.g. synthetic events); dragging still works without it.
+  }
 });
 
 lanesEl.addEventListener('pointerup', (ev) => {

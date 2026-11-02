@@ -133,6 +133,12 @@ button {
   font-size: 14px;
 }
 
+.status a {
+  color: inherit;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
 .status .dot {
   display: inline-block;
   width: 8px;

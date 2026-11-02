@@ -2,6 +2,10 @@
 
 **A flight recorder for your computer.** It quietly keeps the last couple of days of what every app was doing, notices freezes on its own, and when something goes wrong it tells you why, in plain English.
 
+[![CI](https://github.com/atharv146/freezeframe/actions/workflows/ci.yml/badge.svg)](https://github.com/atharv146/freezeframe/actions/workflows/ci.yml) ![macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-13202e) ![License: MIT](https://img.shields.io/badge/license-MIT-13202e)
+
+**[Try the live demo in your browser](https://atharv146.github.io/freezeframe/)**, no install needed, or [install it](#install) in one line.
+
 ![The Freezeframe dashboard explaining a 9-second freeze: a browser tab leaked memory for an hour until the Mac ran out and started swapping](docs/dashboard.png)
 
 ## Why
@@ -57,18 +61,31 @@ Each verdict comes with the numbers behind it, a confidence level, and what to d
 
 ## Install
 
-Requires Python 3.10 or newer. No administrator rights needed.
+**macOS and Linux**, in Terminal:
 
 ```bash
-pipx install git+https://github.com/atharv146/freezeframe
-freezeframe install        # record in the background, starting at login
+curl -fsSL https://raw.githubusercontent.com/atharv146/freezeframe/main/install.sh | sh
 ```
 
-See it in action right away with a demo recording containing five kinds of incidents:
+**Windows**, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/atharv146/freezeframe/main/install.ps1 | iex
+```
+
+The installer needs Python 3.10 or newer, and no administrator rights. It installs Freezeframe into its own folder, adds the `freezeframe` command, and starts recording in the background whenever you log in. Read the scripts first if you like: [install.sh](install.sh), [install.ps1](install.ps1). If you already use pipx:
+
+```bash
+pipx install git+https://github.com/atharv146/freezeframe && freezeframe install
+```
+
+To see what it does before anything has gone wrong, open the demo recording, with five kinds of incidents:
 
 ```bash
 freezeframe open --demo
 ```
+
+To remove it: `freezeframe uninstall` stops the background recording and `freezeframe forget --yes` deletes the recording.
 
 ## Use
 

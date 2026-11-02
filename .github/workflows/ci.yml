@@ -24,3 +24,32 @@ jobs:
         run: |
           python -m freezeframe demo
           python -m freezeframe --version
+
+  installers:
+    # Runs the one-line installers on real machines (installing this commit, without the login item).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      FREEZEFRAME_NO_AUTOSTART: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install.sh
+        if: runner.os != 'Windows'
+        run: |
+          FREEZEFRAME_SOURCE="$PWD" sh install.sh
+          ~/.local/bin/freezeframe --version
+          ~/.local/bin/freezeframe demo
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:FREEZEFRAME_SOURCE = "$PWD"
+          ./install.ps1
+          & "$env:LOCALAPPDATA\Freezeframe\app\Scripts\freezeframe.exe" --version
+          & "$env:LOCALAPPDATA\Freezeframe\app\Scripts\freezeframe.exe" demo
