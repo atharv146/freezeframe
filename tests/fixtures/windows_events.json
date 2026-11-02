@@ -1,0 +1,7 @@
+[{"Time":"2026-10-30T14:02:11.1234567Z","Id":1002,"ProviderName":"Application Hang","LogName":"Application","RecordId":881,"Message":"The program chrome.exe version 131.0.6778.86 stopped interacting with Windows and was closed."},
+ {"Time":"2026-10-30T15:20:00.0000000Z","Id":1000,"ProviderName":"Application Error","LogName":"Application","RecordId":882,"Message":"Faulting application name: Discord.exe, version: 1.0.9170.0, time stamp: 0x6720"},
+ {"Time":"2026-10-30T16:00:00.0000000Z","Id":4101,"ProviderName":"Display","LogName":"System","RecordId":9001,"Message":"Display driver nvlddmkm stopped responding and has successfully recovered."},
+ {"Time":"2026-10-30T16:05:00.0000000Z","Id":41,"ProviderName":"Microsoft-Windows-Kernel-Power","LogName":"System","RecordId":9002,"Message":"The system has rebooted without cleanly shutting down first."},
+ {"Time":"2026-10-30T16:06:00.0000000Z","Id":18,"ProviderName":"Microsoft-Windows-WHEA-Logger","LogName":"System","RecordId":9003,"Message":"A fatal hardware error has occurred."},
+ {"Time":"2026-10-30T16:07:00.0000000Z","Id":105,"ProviderName":"Microsoft-Windows-Kernel-Power","LogName":"System","RecordId":9004,"Message":"Power source change."},
+ {"Time":"2026-10-30T16:08:00.0000000Z","Id":2004,"ProviderName":"Microsoft-Windows-Resource-Exhaustion-Detector","LogName":"System","RecordId":9005,"Message":"Windows successfully diagnosed a low virtual memory condition."}]

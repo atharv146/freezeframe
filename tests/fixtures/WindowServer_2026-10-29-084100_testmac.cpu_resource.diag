@@ -1,0 +1,22 @@
+Date/Time:        2026-10-29 08:39:26.196 -0700
+End time:         2026-10-29 08:41:00.004 -0700
+OS Version:       macOS 26.5.1 (Build 25F80)
+Architecture:     arm64e
+Report Version:   72
+
+Data Source:      Microstackshots
+
+Command:          WindowServer
+Path:             /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+PID:              172
+
+Event:            cpu usage
+Action taken:     none
+CPU:              90 seconds cpu time over 94 seconds (96% cpu average), exceeding limit of 50% cpu over 180 seconds
+CPU limit:        90s
+Limit duration:   180s
+Duration:         93.63s
+Steps:            19
+
+Hardware model:   Mac17,3
+Active cpus:      10

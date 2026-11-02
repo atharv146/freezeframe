@@ -1,0 +1,12 @@
+Date/Time:        2026-10-31 13:30:11.000 -0700
+End time:         2026-11-01 11:51:38.418 -0700
+OS Version:       macOS 26.5.1 (Build 25F80)
+
+Command:          Brave Browser Helper
+Path:             /Applications/Brave Browser.app/Contents/Frameworks/Brave Browser Framework.framework/Versions/131.1.73.89/Helpers/Brave Browser Helper.app/Contents/MacOS/Brave Browser Helper
+PID:              4431
+
+Event:            disk writes
+Action taken:     none
+Writes:           8589.96 MB of file backed memory dirtied over 80487 seconds (106.72 KB per second average), exceeding limit of 99.42 KB per second over 86400 seconds
+Duration:         80487.41s

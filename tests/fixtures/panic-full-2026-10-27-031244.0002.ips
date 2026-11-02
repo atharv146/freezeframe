@@ -1,0 +1,2 @@
+{"bug_type":"210","timestamp":"2026-10-27 03:12:44.00 -0700","os_version":"macOS 26.5.1","name":"Kernel Panic"}
+{"panicString":"panic(cpu 4 caller 0xfffffe0012345678): watchdog timeout: no checkins from watchdogd in 90 seconds\nmore lines"}

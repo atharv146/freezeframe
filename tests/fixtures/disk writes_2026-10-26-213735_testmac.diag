@@ -1,0 +1,6 @@
+Date/Time:        2026-10-25 17:06:34.000 -0700
+End time:         2026-10-26 17:06:34.000 -0700
+
+Event:            disk writes
+Signature:        com.apple.SystemStats.Daily.IO
+Duration:         86400.00s

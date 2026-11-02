@@ -1,0 +1,2 @@
+{"app_name":"Spotify","timestamp":"2026-10-28 22:01:02.00 -0700","app_version":"1.2.48","bug_type":"309","name":"Spotify"}
+{"procName":"Spotify","procPath":"/Applications/Spotify.app/Contents/MacOS/Spotify","exception":{"type":"EXC_BAD_ACCESS","signal":"SIGSEGV","subtype":"KERN_INVALID_ADDRESS at 0x0"},"termination":{"indicator":"Segmentation fault: 11"}}
