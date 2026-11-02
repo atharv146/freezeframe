@@ -43,6 +43,28 @@ class Api:
     def __init__(self, db: Path, platform: str | None = None):
         self.db = db
         self.platform = platform
+        self._machine: tuple[float, dict[str, Any]] | None = None
+
+    def machine(self, s: Store) -> dict[str, Any]:
+        """This computer's facts, or the recording's own for demo recordings."""
+        meta = s.meta()
+        if meta.get("demo") and meta.get("machine"):
+            return meta["machine"]
+        if self._machine is None or time.time() - self._machine[0] > 60:
+            from .insights import machine
+
+            self._machine = (time.time(), machine())
+        return self._machine[1]
+
+    def now(self) -> dict[str, Any]:
+        from .insights import insights, snapshot
+
+        s = self._store()
+        try:
+            info = self.machine(s)
+            return {**snapshot(s, info), "insights": [asdict(i) for i in insights(s, info)]}
+        finally:
+            s.close()
 
     def _store(self) -> Store:
         return Store(self.db)
@@ -152,6 +174,8 @@ def make_handler(api: Api, port_ref: list[int]):
                     return self._json(api.timeline(float(q["start"]), float(q["end"]), int(q.get("points", 800))))
                 if url.path == "/api/diagnose":
                     return self._json(api.diagnose(q))
+                if url.path == "/api/now":
+                    return self._json(api.now())
                 return self._send(404, b"not found", "text/plain")
             except (KeyError, ValueError) as e:
                 return self._json({"error": str(e)}, 400)

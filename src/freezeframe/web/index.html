@@ -42,7 +42,15 @@
         <ol id="incident-list"></ol>
       </aside>
 
-      <section class="view" aria-label="Timeline">
+      <section class="view">
+        <div class="views" role="tablist" aria-label="View">
+          <button type="button" role="tab" id="tab-now" aria-selected="true" aria-controls="now-view">Right now</button>
+          <button type="button" role="tab" id="tab-timeline" aria-selected="false" aria-controls="timeline-view">Timeline</button>
+        </div>
+
+        <div id="now-view" role="tabpanel" aria-labelledby="tab-now"></div>
+
+        <div id="timeline-view" role="tabpanel" aria-labelledby="tab-timeline" hidden>
         <div class="toolbar">
           <div class="ranges" role="group" aria-label="Time range" id="ranges">
             <button type="button" data-range="900">15 min</button>
@@ -72,6 +80,7 @@
         <p class="chart-hint">Click any moment to see what was going on. Drag across the chart to zoom in.</p>
 
         <article class="explain" id="explain" aria-live="polite"></article>
+        </div>
       </section>
     </main>
     <div class="tip" id="tip" role="tooltip" hidden></div>

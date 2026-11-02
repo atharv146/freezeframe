@@ -125,7 +125,9 @@ def cmd_record(args: argparse.Namespace) -> int:
     install_signal_handlers(stop)
     if not args.quiet:
         print(f"Recording every {args.interval:g} s to {db_path()}. Press Ctrl+C to stop.")
-    Recorder(store, interval=args.interval).run(stop)
+    from .notify import enabled as notifications_enabled
+
+    Recorder(store, interval=args.interval, notify_enabled=not args.no_notify and notifications_enabled()).run(stop)
     if not args.quiet:
         print("\nStopped.")
     return 0
@@ -187,6 +189,52 @@ def cmd_show(args: argparse.Namespace) -> int:
         return 1
     d = diagnose(store, e.ts, e.end_ts, e, store.platform(sys.platform))
     print_diagnosis(d, e.title)
+    return 0
+
+
+def cmd_now(args: argparse.Namespace) -> int:  # noqa: ARG001
+    from .insights import insights, machine, snapshot
+
+    store = _open_store()
+    if store is None:
+        return 1
+    meta = store.meta()
+    info = meta["machine"] if meta.get("demo") and meta.get("machine") else machine()
+    snap = snapshot(store, info)
+    s = snap["sample"]
+    device = {"darwin": "Your Mac", "win32": "Your PC"}.get(info.get("platform", ""), "Your computer")
+    print()
+    print(bold(f"{device} right now") + dim(f"  ({info.get('cpu')}, {human_bytes(info.get('memory', 0))} memory)"))
+    if s:
+        pressure = {1: "normal", 2: "elevated", 4: "critical"}.get(s.get("pressure") or 0)
+        used = s["mem_total"] - s["mem_available"]
+        parts = [f"CPU {s['cpu']:.0f}%", f"Memory {human_bytes(used)} of {human_bytes(s['mem_total'])}" + (f" (pressure {pressure})" if pressure else "")]
+        if info.get("disk_total"):
+            parts.append(f"Disk {100 * (1 - info['disk_free'] / info['disk_total']):.0f}% full")
+        b = info.get("battery")
+        if b:
+            parts.append(f"Battery {b['percent']}%" + (f", health {b['health']}%" if b.get("health") else ""))
+        if info.get("uptime"):
+            up = info["uptime"]
+            parts.append(f"Up {up / 86400:.1f} days" if up >= 2 * 86400 else f"Up {fmt_duration(up)}")
+        print("  " + "   ".join(parts))
+    print()
+    print(bold("  Worth knowing"))
+    marks = {"warning": red("!"), "tip": "*", "info": "-", "good": green("+")}
+    for i in insights(store, info):
+        print(f"  {marks[i.level]} {i.title}")
+        print(dim(wrap(i.body, "      ")))
+    if snap["apps"]:
+        print()
+        print(bold("  What's running"))
+        for a in snap["apps"][:10]:
+            line = f"  {a['app'][:26]:<26} {human_bytes(a['rss']):>9} {cores(a['cpu']):>15}"
+            if a["nproc"] > 1:
+                line += dim(f"  {a['nproc']} processes")
+            print(line)
+            if a["what"]:
+                print(dim(wrap(a["what"][0].upper() + a["what"][1:] if not a["what"].startswith("mac") else a["what"], "      ")))
+    print()
     return 0
 
 
@@ -280,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("record", help="record in the foreground (install does this in the background)")
     r.add_argument("--interval", type=float, default=2.0, help="seconds between samples (default 2)")
     r.add_argument("--quiet", action="store_true", help="log to a file instead of the terminal")
+    r.add_argument("--no-notify", action="store_true", help="don't show desktop notifications when a freeze is caught")
     r.set_defaults(func=cmd_record)
 
     w = sub.add_parser("why", help="explain the latest freeze, or a moment you choose")
@@ -287,6 +336,8 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("--within", type=float, default=30, help="look for incidents in the last N minutes (default 30)")
     w.add_argument("--cached", action="store_true", help=argparse.SUPPRESS)
     w.set_defaults(func=cmd_why)
+
+    sub.add_parser("now", help="what your computer is doing right now, and things worth knowing").set_defaults(func=cmd_now)
 
     ls = sub.add_parser("list", help="list recorded incidents")
     ls.add_argument("--limit", type=int, default=20)

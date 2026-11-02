@@ -710,3 +710,270 @@ table.apps {
     padding: 18px;
   }
 }
+
+/* ------------------------------------------------------------ views */
+
+.views {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.views button {
+  border: 0;
+  background: none;
+  padding: 8px 14px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.views button[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* ----------------------------------------------------------- right now */
+
+.readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.readout {
+  padding: 14px 18px;
+  border-left: 1px solid var(--grid);
+}
+
+.readout:first-child {
+  border-left: 0;
+}
+
+.readout .label {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.readout .value {
+  font: 600 26px/1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  margin: 2px 0;
+}
+
+.readout .sub {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.status-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.breakdown {
+  margin-top: 22px;
+}
+
+.breakdown h3,
+.now h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.stackbar {
+  display: flex;
+  height: 22px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--grid);
+  gap: 2px;
+}
+
+.stackbar span {
+  min-width: 2px;
+}
+
+.stackbar .free {
+  background: transparent;
+}
+
+.bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.bar-legend .item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bar-legend .v {
+  font-family: var(--mono);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.now {
+  margin-top: 28px;
+}
+
+.insights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 860px;
+}
+
+.insight {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 2px 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.insight:first-child {
+  border-top: 0;
+}
+
+.insight .icon {
+  margin-top: 5px;
+  width: 12px;
+  height: 12px;
+}
+
+.icon.lvl-warning {
+  background: var(--serious);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.icon.lvl-tip {
+  border: 2px solid var(--ink-2);
+  border-radius: 50%;
+}
+
+.icon.lvl-info {
+  background: var(--ink-3);
+  border-radius: 50%;
+}
+
+.icon.lvl-good {
+  background: var(--good);
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%);
+}
+
+.insight .title {
+  font-weight: 700;
+}
+
+.insight .level {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-left: 8px;
+}
+
+.insight .body {
+  grid-column: 2;
+  color: var(--ink-2);
+  max-width: 76ch;
+}
+
+.running {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+  max-width: 980px;
+}
+
+.running details + details {
+  border-top: 1px solid var(--grid);
+}
+
+.running summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 150px;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.running summary::-webkit-details-marker {
+  display: none;
+}
+
+.running summary:hover {
+  background: var(--paper);
+}
+
+.running .head {
+  font-size: 13px;
+  color: var(--ink-3);
+  padding: 8px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 150px;
+  gap: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.running .name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.running .procs {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.running .what {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-top: 1px;
+}
+
+.running .num {
+  white-space: nowrap;
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.running .more {
+  padding: 0 16px 14px 36px;
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 80ch;
+}
+
+.running .more p {
+  margin: 4px 0;
+}
+
+.running .more b {
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .running summary,
+  .running .head {
+    grid-template-columns: minmax(0, 1fr) 70px 90px;
+  }
+}

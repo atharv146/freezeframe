@@ -151,5 +151,10 @@ def build_demo(path: str | Path | None = None, end: float | None = None, seed: i
     store.set_meta("recorder", {"platform": "darwin", "host": "demo-macbook", "cpus": CPUS, "memory": TOTAL, "interval": INTERVAL,
                                 "os": "macOS 26 (demo data)", "started": start})
     store.set_meta("clean_exit", True)
+    store.set_meta("machine", {
+        "platform": "darwin", "os": "macOS 26 (demo)", "cpu": "Apple M-series (demo)", "cores": CPUS, "memory": TOTAL,
+        "disk_total": 494 * GB, "disk_free": 37 * GB, "uptime": 9.3 * 86400,
+        "battery": {"percent": 64, "plugged": True, "cycles": 412, "design_cycles": 1000, "health": 86},
+    })
     store.close()
     return path

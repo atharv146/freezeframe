@@ -44,6 +44,9 @@
       const appSeries = Object.fromEntries(Object.entries(T.app_series).map(([a, s]) => [a, s.filter(within(lo, hi))]));
       return shifted({ ...T, start: lo + T.step, end: hi - T.step, series: T.series.filter(within(lo, hi)), app_series: appSeries, events });
     }
+    if (name === 'now') {
+      return shifted(D.now);
+    }
     if (name === 'diagnose') {
       if (q.id) {
         const id = Number(q.id);

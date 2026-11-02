@@ -18,6 +18,7 @@ from . import __version__, reports
 from .detect import Detectors, classify_gap
 from .diagnose import diagnose, incident_title
 from .models import Event
+from .notify import notify
 from .reports import fmt_duration
 from .sampler import Sampler
 from .store import Store
@@ -25,13 +26,15 @@ from .store import Store
 log = logging.getLogger("freezeframe")
 
 REPORT_SCAN_EVERY = 60.0
+NOTIFY_MIN_FREEZE = 3.0  # seconds; shorter hiccups are recorded but not announced
+NOTIFY_COOLDOWN = 120.0
 PRUNE_EVERY = 3600.0
 FIRST_IMPORT_DAYS = 7
 
 
 class Recorder:
     def __init__(self, store: Store, interval: float = 2.0, sampler: Sampler | None = None,
-                 scan_reports: Callable[[float], list[Event]] | None = reports.scan):
+                 scan_reports: Callable[[float], list[Event]] | None = reports.scan, notify_enabled: bool = False):
         self.store = store
         self.interval = interval
         self.sampler = sampler or Sampler()
@@ -41,6 +44,8 @@ class Recorder:
         self._last_scan = 0.0
         self._last_prune = 0.0
         self._pending: list[tuple[int, Event, float]] = []  # incidents to re-diagnose once more data exists
+        self.notify = notify_enabled
+        self._last_notice = 0.0
 
     # -------------------------------------------------------------- lifecycle
 
@@ -119,13 +124,17 @@ class Recorder:
         incident = Event(start, "stall", f"Froze for {fmt_duration(end - start)}", 3 if end - start >= 10 else 2, end_ts=end)
         incident.id = self.store.add_event(incident)
         if incident.id is not None:
-            self._diagnose(incident)
+            self._diagnose(incident, announce=end - start >= NOTIFY_MIN_FREEZE)
             # Diagnose again shortly, once the moments after the freeze are recorded too.
             self._pending.append((incident.id, incident, end + 10))
 
-    def _diagnose(self, incident: Event) -> None:
+    def _diagnose(self, incident: Event, announce: bool = False) -> None:
         d = diagnose(self.store, incident.ts, incident.end_ts, incident, sys.platform)
-        self.store.update_event(incident.id, title=incident_title(incident, d), detail={**incident.detail, "diagnosis": d})
+        title = incident_title(incident, d)
+        self.store.update_event(incident.id, title=title, detail={**incident.detail, "diagnosis": d})
+        if announce and self.notify and time.time() - self._last_notice >= NOTIFY_COOLDOWN:
+            self._last_notice = time.time()
+            notify("Freezeframe", f"{title}. Run  freezeframe why  for details.")
 
     def _rediagnose(self, now: float) -> None:
         due = [p for p in self._pending if p[2] <= now]
@@ -138,8 +147,8 @@ class Recorder:
         self._last_scan = now
         for e in self.scan_reports(since):
             e.id = self.store.add_event(e)
-            if e.id is not None and e.kind in ("hang", "crash") and now - e.ts < 3600:
-                self._diagnose(e)
+            if e.id is not None and e.kind in ("hang", "crash", "panic", "hardware") and now - e.ts < 3600:
+                self._diagnose(e, announce=now - e.ts < 900)
         self.store.set_meta("last_scan", now)
 
 

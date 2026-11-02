@@ -42,6 +42,19 @@ Today 11:14:11 PM, lasting 9 s
 
 In that recording it had also flagged *"Brave Browser has been growing steadily (+5.3 GB per hour); it may be leaking memory"* almost an hour before the freeze.
 
+## A task manager that explains itself
+
+Freezeframe also answers the everyday question: *what is my computer doing right now, and is that normal?* The **Right now** view (or `freezeframe now` in a terminal) shows:
+- CPU and memory broken down by app, with each app's helper processes added up;
+- disk space, battery health and uptime;
+- a description of every running app: what it is, what's normal for it, and what to do if it's causing trouble ("mds_stores is Spotlight indexing your files; it's heavy after updates and stops on its own").
+
+Above that, **Worth knowing** pulls out what matters from the last day: a disk that's nearly full, a battery that's worn out, memory that was tight for an hour, an app that seems to be leaking memory, or simply that nothing needs your attention.
+
+![The Right now view: readouts for CPU, memory, disk, battery and uptime, memory and CPU by app, a list of things worth knowing, and plain-English descriptions of each running app](docs/right-now.png)
+
+When it catches a freeze of three seconds or more, it shows a desktop notification with the cause, so you don't even have to go looking.
+
 ## What it catches
 
 | Problem | How it's detected |
@@ -91,6 +104,7 @@ To remove it: `freezeframe uninstall` stops the background recording and `freeze
 
 | Command | What it does |
 |---|---|
+| `freezeframe now` | What's running right now, explained, plus things worth knowing |
 | `freezeframe why` | Explains the latest freeze, or the last two minutes if nothing froze |
 | `freezeframe why --at 3:42pm` | Explains a moment you choose (`10m`, `15:42` and ISO times work too) |
 | `freezeframe mark "zoom froze"` | Notes that something just went wrong and explains the moments before it |
@@ -99,7 +113,7 @@ To remove it: `freezeframe uninstall` stops the background recording and `freeze
 | `freezeframe status` | Is it recording, how far back, and how much space it uses |
 | `freezeframe uninstall` / `forget --yes` | Stops background recording / deletes the recording |
 
-In the dashboard, click any incident or any moment on the timeline to get an explanation, drag across the chart to zoom, and use **Something went wrong** when you notice a problem.
+In the dashboard, **Right now** shows the live breakdown. On the **Timeline**, click any incident or moment to get an explanation, and drag across the chart to zoom. Use **Something went wrong** whenever you notice a problem. To turn off desktop notifications, set `FREEZEFRAME_NO_NOTIFY=1` or record with `--no-notify`.
 
 ## How it works
 

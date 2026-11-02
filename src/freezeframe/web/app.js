@@ -191,11 +191,110 @@ function renderIncidents() {
   for (const b of list.querySelectorAll('.incident')) b.addEventListener('click', () => selectIncident(Number(b.dataset.id)));
 }
 
+// ------------------------------------------------------------- right now
+
+let currentView = 'now';
+
+async function showView(v) {
+  currentView = v;
+  $('tab-now').setAttribute('aria-selected', String(v === 'now'));
+  $('tab-timeline').setAttribute('aria-selected', String(v === 'timeline'));
+  $('now-view').hidden = v !== 'now';
+  $('timeline-view').hidden = v !== 'timeline';
+  if (v === 'now') await loadNow();
+  else if (!state.data && state.overview.first) await setPreset(state.overview.last - state.overview.first <= 6 * 3600 ? 'all' : '3600');
+  else draw();
+}
+
+async function loadNow() {
+  if (!state.overview.first) return;
+  renderNow(await api('/api/now'));
+}
+
+const LEVEL_LABEL = { warning: 'Needs attention', tip: 'Tip', info: 'Good to know', good: 'Good' };
+
+function stackBar(parts, total) {
+  return `<div class="stackbar" role="img" aria-label="${esc(parts.map((p) => `${p.label} ${p.text}`).join(', '))}">${parts
+    .map((p) => `<span class="${p.cls || ''}" style="flex:${Math.max(p.value, total * 0.004)};${p.colour ? `background:${p.colour}` : ''}"></span>`)
+    .join('')}</div>
+    <div class="bar-legend">${parts.filter((p) => !p.hideLegend).map((p) => `<span class="item">${p.colour ? `<span class="swatch" style="background:${p.colour}"></span>` : ''}${esc(p.label)} <span class="v">${esc(p.text)}</span></span>`).join('')}</div>`;
+}
+
+function renderNow(n) {
+  const s = n.sample;
+  const m = n.machine || {};
+  if (!s) {
+    $('now-view').innerHTML = '';
+    return;
+  }
+  const ncpu = m.cores || state.overview.recorder?.cpus || 8;
+  const apps = n.apps;
+  const byMem = [...apps].sort((a, b) => b.rss - a.rss).slice(0, 6);
+  assignSlots(byMem.map((a) => a.app));
+  const used = s.mem_total - s.mem_available;
+  const pressure = { 1: 'normal', 2: 'elevated', 4: 'critical' }[s.pressure];
+  const readouts = [
+    { label: 'CPU', value: `${Math.round(s.cpu)}%`, sub: `of ${ncpu} cores${m.cpu ? `, ${m.cpu}` : ''}` },
+    { label: 'Memory', value: bytes(used), sub: `of ${bytes(s.mem_total)}${pressure ? `, pressure ${pressure}` : ''}` },
+  ];
+  if (m.disk_total) {
+    const pct = 100 * (1 - m.disk_free / m.disk_total);
+    readouts.push({ label: 'Disk', value: `${Math.round(pct)}%`, sub: `full, ${bytes(m.disk_free)} free` });
+  }
+  if (m.battery) {
+    readouts.push({ label: 'Battery', value: `${m.battery.percent}%`, sub: m.battery.health ? `health ${m.battery.health}%${m.battery.cycles ? `, ${m.battery.cycles} cycles` : ''}` : m.battery.plugged ? 'plugged in' : 'on battery' });
+  }
+  if (m.uptime) readouts.push({ label: 'Running for', value: m.uptime >= 172800 ? `${(m.uptime / 86400).toFixed(1)} d` : duration(m.uptime), sub: 'since the last restart' });
+  if (s.swap_used) readouts.push({ label: 'Swap', value: bytes(s.swap_used), sub: 'memory parked on disk' });
+
+  const memParts = byMem.map((a) => ({ label: a.app, value: a.rss, text: bytes(a.rss), colour: colourFor(a.app) }));
+  const memApps = memParts.reduce((t, p) => t + p.value, 0);
+  memParts.push({ label: 'System and other apps', value: Math.max(0, used - memApps), text: bytes(Math.max(0, used - memApps)), colour: css('--other') });
+  memParts.push({ label: 'Free', value: s.mem_available, text: bytes(s.mem_available), cls: 'free' });
+
+  const byCpu = [...apps].filter((a) => a.cpu >= 1).sort((a, b) => b.cpu - a.cpu).slice(0, 6);
+  assignSlots(byCpu.map((a) => a.app));
+  const cpuParts = byCpu.map((a) => ({ label: a.app, value: a.cpu / ncpu, text: cores(a.cpu), colour: colourFor(a.app) }));
+  const cpuApps = cpuParts.reduce((t, p) => t + p.value, 0);
+  cpuParts.push({ label: 'Everything else', value: Math.max(0, s.cpu - cpuApps), text: `${Math.max(0, Math.round(s.cpu - cpuApps))}%`, colour: css('--other') });
+  cpuParts.push({ label: 'Idle', value: Math.max(0, 100 - s.cpu), text: `${Math.round(100 - s.cpu)}%`, cls: 'free' });
+
+  const sentenceCase = (t) => (t ? sentence(t) : '');
+  $('now-view').innerHTML = `
+    <div class="readouts">${readouts.map((r) => `<div class="readout"><div class="label">${esc(r.label)}</div><div class="value">${esc(r.value)}</div><div class="sub">${esc(r.sub)}</div></div>`).join('')}</div>
+    <div class="breakdown"><h3>Memory by app</h3>${stackBar(memParts, s.mem_total)}</div>
+    <div class="breakdown"><h3>CPU by app</h3>${stackBar(cpuParts, 100)}</div>
+    <section class="now"><h2>Worth knowing</h2>
+      <ul class="insights">${n.insights.map((i) => `<li class="insight"><span class="icon lvl-${i.level}" aria-hidden="true"></span>
+        <div><span class="title">${esc(i.title)}</span><span class="level">${LEVEL_LABEL[i.level]}</span></div>
+        <div class="body">${esc(i.body)}</div></li>`).join('')}</ul>
+    </section>
+    <section class="now"><h2>What's running</h2>
+      <div class="running">
+        <div class="head"><span>App</span><span class="num">Memory</span><span class="num">CPU</span></div>
+        ${apps.map((a) => `<details><summary>
+          <span><span class="name"><span class="swatch" style="background:${state.appSlots.has(a.app) ? colourFor(a.app) : 'transparent'}"></span>${esc(a.app)}${a.nproc > 1 ? ` <span class="procs">${a.nproc} processes</span>` : ''}</span>
+          <span class="what">${esc(sentenceCase(a.what) || 'No description yet.')}</span></span>
+          <span class="num">${bytes(a.rss)}</span><span class="num">${cores(a.cpu)}</span></summary>
+          <div class="more">${a.normal ? `<p><b>What's normal:</b> ${esc(a.normal)}</p>` : ''}${a.tip ? `<p><b>If it's causing trouble:</b> ${esc(a.tip)}</p>` : ''}${!a.normal && !a.tip ? `<p>Freezeframe doesn't know this one yet. Its busiest process is ${esc(a.top_name || a.app)}.</p>` : ''}</div>
+        </details>`).join('')}
+      </div>
+    </section>`;
+  // Keep expanded rows open across refreshes.
+}
+
 // --------------------------------------------------------------- explain
 
 async function selectIncident(id, moveView = true) {
   state.selected = { kind: 'incident', id };
   renderIncidents();
+  if (currentView !== 'timeline') {
+    currentView = 'timeline';
+    $('tab-now').setAttribute('aria-selected', 'false');
+    $('tab-timeline').setAttribute('aria-selected', 'true');
+    $('now-view').hidden = true;
+    $('timeline-view').hidden = false;
+  }
   const e = state.overview.incidents.find((x) => x.id === id);
   if (e && moveView) {
     const end = Math.max(e.end_ts || e.ts, e.ts);
@@ -656,6 +755,8 @@ lanesEl.addEventListener('pointerup', (ev) => {
   else selectMoment(t);
 });
 
+$('tab-now').addEventListener('click', () => showView('now'));
+$('tab-timeline').addEventListener('click', () => showView('timeline'));
 for (const b of document.querySelectorAll('#ranges button')) b.addEventListener('click', () => setPreset(b.dataset.range));
 $('pan-back').addEventListener('click', () => {
   const span = state.end - state.start;
@@ -700,9 +801,15 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
 
 async function refreshLive() {
   if (!state.overview?.live) return;
+  await loadOverview();
+  if (currentView === 'now') {
+    const open = [...document.querySelectorAll('.running details[open] .name')].map((e) => e.textContent);
+    await loadNow();
+    for (const d of document.querySelectorAll('.running details')) if (open.includes(d.querySelector('.name').textContent)) d.open = true;
+    return;
+  }
   const followed = state.overview.last - state.end < 60;
   const span = state.end - state.start;
-  await loadOverview();
   if (followed && !drag) await setRange(state.overview.last - span, state.overview.last, state.rangeKey);
 }
 
@@ -710,23 +817,19 @@ async function main() {
   await loadOverview();
   const o = state.overview;
   if (!o.first) {
+    $('now-view').hidden = true;
+    $('timeline-view').hidden = false;
     renderWelcome();
     return;
   }
-  const fromHash = Number(new URLSearchParams(location.hash.slice(1)).get('incident'));
+  const params = new URLSearchParams(location.hash.slice(1));
+  const fromHash = Number(params.get('incident'));
   if (fromHash && o.incidents.some((i) => i.id === fromHash)) {
     await selectIncident(fromHash);
+  } else if (params.get('view') === 'timeline') {
+    await showView('timeline');
   } else {
-    await setPreset(o.last - o.first <= 6 * 3600 ? 'all' : '3600');
-    const recent = o.incidents.filter((i) => i.ts >= o.first);
-    const pick = recent.slice(0, 6).sort((a, b) => b.severity - a.severity || b.ts - a.ts)[0];
-    if (pick) {
-      state.selected = { kind: 'incident', id: pick.id };
-      renderIncidents();
-      const r = await api(`/api/diagnose?id=${pick.id}`);
-      renderExplain(r.diagnosis, r.event);
-      draw();
-    }
+    await showView('now');
   }
   setInterval(refreshLive, 5000);
 }
