@@ -57,7 +57,8 @@ case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *)
     case "${SHELL:-}" in
-      */zsh) PROFILE="$HOME/.zprofile" ;;
+      # .zshrc, not .zprofile: terminals inside apps and editors start non-login shells, which skip .zprofile.
+      */zsh) PROFILE="$HOME/.zshrc" ;;
       */bash) if [ "$(uname -s)" = Darwin ]; then PROFILE="$HOME/.bash_profile"; else PROFILE="$HOME/.bashrc"; fi ;;
       *) PROFILE="$HOME/.profile" ;;
     esac
